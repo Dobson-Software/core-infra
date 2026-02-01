@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cobalt-services
+  labels:
+    app.kubernetes.io/part-of: cobalt
+    app.kubernetes.io/managed-by: kubectl
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cobalt-monitoring
+  labels:
+    app.kubernetes.io/part-of: cobalt
+    app.kubernetes.io/managed-by: kubectl
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cobalt-ingress
+  labels:
+    app.kubernetes.io/part-of: cobalt
+    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/name: cobalt-ingress

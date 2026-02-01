@@ -1,0 +1,61 @@
+version: 0.1
+
+resource_usage:
+  # ── DEV Environment ──────────────────────────────────────────────
+
+  # NAT Gateway
+  module.networking.aws_nat_gateway.this[0]:
+    monthly_gb_data_processed: 50
+
+  # ALB
+  module.load_balancer.aws_lb.cobalt:
+    new_connections: 100000
+    active_connections: 500
+    processed_bytes_gb: 10
+    rule_evaluations: 500000
+
+  # CloudFront
+  module.cdn.aws_cloudfront_distribution.cobalt:
+    monthly_http_requests: 500000
+    monthly_https_requests: 500000
+    monthly_data_transfer_to_internet_gb:
+      us: 40
+      europe: 10
+    monthly_data_transfer_to_origin_gb:
+      us: 5
+
+  # S3 buckets (aggregate estimate)
+  module.storage.aws_s3_bucket.uploads:
+    object_tags: 0
+    standard:
+      storage_gb: 30
+      monthly_tier_1_requests: 50000
+      monthly_tier_2_requests: 200000
+
+  module.storage.aws_s3_bucket.alb_logs:
+    standard:
+      storage_gb: 10
+      monthly_tier_1_requests: 10000
+
+  # WAF
+  module.load_balancer.aws_wafv2_web_acl.cobalt:
+    monthly_requests: 500000
+
+  module.cdn.aws_wafv2_web_acl.cloudfront:
+    monthly_requests: 500000
+
+  # GuardDuty
+  module.security_base.aws_guardduty_detector.main[0]:
+    monthly_cloudtrail_management_events: 50000
+    monthly_s3_data_events: 100000
+    monthly_eks_audit_log_events: 200000
+
+  # VPC Flow Logs
+  module.networking.aws_cloudwatch_log_group.vpc_flow_log:
+    monthly_data_ingested_gb: 5
+
+  # ── PROD Environment (higher usage) ─────────────────────────────
+
+  # Note: Infracost resolves these based on module paths in each
+  # environment. The same module references apply but with different
+  # resource counts configured in the Terraform variables.

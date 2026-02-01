@@ -1,0 +1,234 @@
+# Cobalt Nightly Audit Configuration
+# Controls what the AI audit checks and how issues are created.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Categories — each can be toggled on/off independently
+# ─────────────────────────────────────────────────────────────────────────────
+categories:
+
+  roadmap:
+    enabled: true
+    description: >
+      Verifies that features marked [DONE] in ROADMAP.md have all listed
+      implementation artifacts (migration, entity, repo, service, mapper,
+      controller, tests, frontend components).
+    minimum_severity: high
+    checks:
+      - name: done_features_complete
+        description: Every file listed under a [DONE] feature must exist on disk
+      - name: in_progress_has_foundation
+        description: Features marked [IN PROGRESS] should have at least migration + entity + repo
+
+  testing:
+    enabled: true
+    description: >
+      Checks that source files have corresponding test files.
+    minimum_severity: medium
+    rules:
+      # Backend: service → integration test
+      - source_pattern: "backend/*/src/main/java/**/service/*.java"
+        test_pattern: "backend/*/src/test/java/**/service/*IntegrationTest.java"
+        description: Every service class must have an integration test
+
+      # Backend: repository → integration test
+      - source_pattern: "backend/*/src/main/java/**/repository/*.java"
+        test_pattern: "backend/*/src/test/java/**/repository/*IntegrationTest.java"
+        description: Every repository must have an integration test
+
+      # Backend: controller → integration test
+      - source_pattern: "backend/*/src/main/java/**/controller/*.java"
+        test_pattern: "backend/*/src/test/java/**/controller/*Test.java"
+        description: Every controller must have a test
+
+      # Frontend: pages → unit test
+      - source_pattern: "frontend/apps/web/src/pages/*.tsx"
+        test_pattern: "frontend/apps/web/src/pages/__tests__/*.test.tsx"
+        description: Every page component must have a unit test
+
+      # Frontend: components → unit test
+      - source_pattern: "frontend/apps/web/src/components/*.tsx"
+        test_pattern: "frontend/apps/web/src/components/__tests__/*.test.tsx"
+        description: Every component must have a unit test
+
+      # Frontend: hooks → unit test
+      - source_pattern: "frontend/apps/web/src/hooks/*.ts"
+        test_pattern: "frontend/apps/web/src/hooks/__tests__/*.test.tsx"
+        description: Every hook must have a unit test
+
+      # Terraform: module → test file
+      - source_pattern: "infrastructure/terraform/modules/*/main.tf"
+        test_pattern: "infrastructure/terraform/modules/*/*.tftest.hcl"
+        description: Every Terraform module must have a test file
+
+  quality:
+    enabled: true
+    description: >
+      Checks coding standards compliance per CLAUDE.md.
+    minimum_severity: medium
+    checks:
+      - name: tenant_id_on_entities
+        description: All JPA @Entity classes must have a tenant_id field
+        severity: critical
+        patterns_to_detect:
+          - pattern: "@Entity"
+            must_also_contain: "tenant_id"
+            exceptions:
+              - "**/entity/BaseAuditEntity.java"
+
+      - name: tenant_scoped_queries
+        description: Repository query methods must include tenantId parameter
+        severity: critical
+        patterns_to_detect:
+          - pattern: "@Query"
+            must_also_contain: "tenantId"
+
+      - name: no_mocks
+        description: No mock imports allowed (Mockito, jest.mock, vi.mock)
+        severity: critical
+        patterns_to_detect:
+          - pattern: "import.*Mockito"
+          - pattern: "@Mock"
+          - pattern: "@MockBean"
+          - pattern: "@SpyBean"
+          - pattern: "jest\\.mock"
+          - pattern: "jest\\.spyOn"
+          - pattern: "vi\\.mock"
+          - pattern: "vi\\.spyOn"
+
+      - name: mapstruct_usage
+        description: Object mapping must use MapStruct, not manual mapping
+        severity: high
+        patterns_to_detect:
+          - pattern: "@Mapper(componentModel"
+            context: Verify MapStruct mappers exist for entities with DTOs
+
+      - name: transactional_services
+        description: Service classes with write methods must have @Transactional
+        severity: medium
+        patterns_to_detect:
+          - pattern: "@Service"
+            must_also_contain: "@Transactional"
+
+      - name: no_typescript_any
+        description: No TypeScript 'any' types allowed
+        severity: medium
+        patterns_to_detect:
+          - pattern: ": any"
+          - pattern: "as any"
+          - pattern: "<any>"
+
+      - name: rfc7807_errors
+        description: Error responses must follow RFC 7807 format
+        severity: medium
+
+      - name: audit_fields
+        description: Entities must have created_at, updated_at, created_by, updated_by
+        severity: medium
+        patterns_to_detect:
+          - pattern: "@Entity"
+            must_also_contain: "created_at"
+
+  security:
+    enabled: true
+    description: >
+      Checks for security vulnerabilities and best practices.
+    minimum_severity: high
+    checks:
+      - name: no_hardcoded_secrets
+        description: No hardcoded API keys, passwords, or secrets in source
+        severity: critical
+        patterns_to_detect:
+          - pattern: "password\\s*=\\s*\""
+            exceptions:
+              - "**/*Test*.java"
+              - "**/*test*"
+              - "**/application-test.yml"
+              - "**/DemoDataSeeder.java"
+          - pattern: "secret\\s*=\\s*\""
+            exceptions:
+              - "**/*Test*.java"
+              - "**/*test*"
+          - pattern: "sk_live_"
+          - pattern: "pk_live_"
+          - pattern: "-----BEGIN.*PRIVATE KEY-----"
+
+      - name: input_validation
+        description: Request body parameters must have @Valid annotation
+        severity: high
+        patterns_to_detect:
+          - pattern: "@RequestBody"
+            must_also_contain: "@Valid"
+
+      - name: auth_on_endpoints
+        description: Endpoints must require authentication (no unprotected routes except health/auth)
+        severity: high
+
+      - name: no_sql_injection
+        description: No string concatenation in SQL queries
+        severity: critical
+        patterns_to_detect:
+          - pattern: "\"SELECT.*\" \\+"
+          - pattern: "\"UPDATE.*\" \\+"
+          - pattern: "\"DELETE.*\" \\+"
+          - pattern: "\"INSERT.*\" \\+"
+
+  architecture:
+    enabled: true
+    description: >
+      Checks structural patterns and separation of concerns.
+    minimum_severity: medium
+    checks:
+      - name: no_logic_in_controllers
+        description: Controllers should only delegate to services, not contain business logic
+        severity: medium
+
+      - name: no_repo_in_controllers
+        description: Controllers must not inject or call repositories directly
+        severity: medium
+        patterns_to_detect:
+          - pattern: "Repository"
+            in_files: "**/controller/*.java"
+            description: Controllers should not reference repositories
+
+      - name: proper_abstractions
+        description: Services should depend on interfaces where appropriate
+        severity: low
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Issue creation settings
+# ─────────────────────────────────────────────────────────────────────────────
+issues:
+  max_per_run: 10
+  dedup_window_days: 30
+  default_labels:
+    - audit-finding
+  severity_labels:
+    critical: severity-critical
+    high: severity-high
+    medium: severity-medium
+    low: severity-low
+  category_labels:
+    roadmap: audit-roadmap
+    testing: audit-testing
+    quality: audit-quality
+    security: audit-security
+    architecture: audit-architecture
+  auto_close_policy:
+    # Automatically close low-severity issues after this many days if no action
+    enabled: false
+    days: 14
+    severity: low
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cost control
+# ─────────────────────────────────────────────────────────────────────────────
+models:
+  audit:
+    model: claude-opus-4-5-20251101
+    max_turns: 30
+  verify:
+    model: claude-sonnet-4-20250514
+    max_turns: 20
+  fix:
+    model: claude-opus-4-5-20251101
+    max_turns: 40

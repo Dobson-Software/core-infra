@@ -1,0 +1,23 @@
+# =============================================
+# Cobalt Frontend — Playwright E2E Runner
+# =============================================
+
+FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+
+RUN corepack enable && corepack prepare pnpm@8.14.0 --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY apps/web/package.json apps/web/
+COPY packages/ui/package.json packages/ui/
+COPY packages/api-client/package.json packages/api-client/
+
+RUN pnpm install
+
+COPY . .
+COPY playwright.config.ts .
+
+ENV CI=true
+
+CMD ["pnpm", "test:e2e"]

@@ -1,0 +1,82 @@
+name: Infracost
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/terraform/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  infracost:
+    name: Infracost Cost Estimate
+    runs-on: ubuntu-latest
+    env:
+      TF_ROOT: infrastructure/terraform
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate base cost estimate (dev)
+        run: |
+          infracost breakdown \
+            --path ${TF_ROOT}/environments/dev \
+            --usage-file ${TF_ROOT}/infracost-usage.yml \
+            --format json \
+            --out-file /tmp/infracost-base-dev.json
+
+      - name: Generate base cost estimate (prod)
+        run: |
+          infracost breakdown \
+            --path ${TF_ROOT}/environments/prod \
+            --usage-file ${TF_ROOT}/infracost-usage.yml \
+            --format json \
+            --out-file /tmp/infracost-base-prod.json
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+
+      - name: Generate PR cost estimate (dev)
+        run: |
+          infracost diff \
+            --path ${TF_ROOT}/environments/dev \
+            --usage-file ${TF_ROOT}/infracost-usage.yml \
+            --compare-to /tmp/infracost-base-dev.json \
+            --format json \
+            --out-file /tmp/infracost-diff-dev.json
+
+      - name: Generate PR cost estimate (prod)
+        run: |
+          infracost diff \
+            --path ${TF_ROOT}/environments/prod \
+            --usage-file ${TF_ROOT}/infracost-usage.yml \
+            --compare-to /tmp/infracost-base-prod.json \
+            --format json \
+            --out-file /tmp/infracost-diff-prod.json
+
+      - name: Combine outputs
+        run: |
+          infracost output \
+            --path "/tmp/infracost-diff-dev.json" \
+            --path "/tmp/infracost-diff-prod.json" \
+            --format json \
+            --out-file /tmp/infracost-combined.json
+
+      - name: Post PR comment
+        run: |
+          infracost comment github \
+            --path /tmp/infracost-combined.json \
+            --repo $GITHUB_REPOSITORY \
+            --github-token ${{ github.token }} \
+            --pull-request ${{ github.event.pull_request.number }} \
+            --behavior update

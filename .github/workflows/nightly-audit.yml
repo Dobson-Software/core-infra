@@ -1,0 +1,303 @@
+name: Nightly AI Audit
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 3 AM UTC daily
+  workflow_dispatch: # Manual trigger for testing
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Claude (Opus) audits the codebase across 5 categories
+  # ---------------------------------------------------------------------------
+  audit:
+    name: Audit Codebase
+    runs-on: ubuntu-latest
+    outputs:
+      findings: ${{ steps.audit.outputs.findings }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run AI audit
+        id: audit
+        uses: anthropics/claude-code-action@v1
+        with:
+          model: claude-opus-4-5-20251101
+          max_turns: 30
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are an automated codebase auditor for the Cobalt platform. Read the following files to understand the project standards and audit configuration:
+
+            1. CLAUDE.md — coding standards and architecture
+            2. ROADMAP.md — feature implementation status
+            3. audit/audit-config.yml — audit rules and categories
+
+            Perform a comprehensive audit across these 5 categories:
+
+            ## 1. Roadmap Compliance
+            For every feature marked [DONE] in ROADMAP.md, verify that ALL listed implementation artifacts actually exist (migration, entity, repository, service, mapper, controller, tests, frontend components). Report any missing artifacts.
+
+            ## 2. Testing Coverage
+            - Every Java service class should have a corresponding integration test
+            - Every repository should have a corresponding integration test
+            - Every controller should have a corresponding integration test
+            - Every React page/component/hook should have a unit test
+            - Every Terraform module should have a .tftest.hcl file
+            Report files missing test coverage.
+
+            ## 3. Code Quality
+            - Verify tenant_id exists on all JPA entities and is included in repository queries
+            - Verify NO mock imports exist (Mockito, jest.mock, vi.mock, etc.)
+            - Verify MapStruct is used for object mapping (no manual mapping)
+            - Verify @Transactional annotations on service methods
+            - Verify no TypeScript `any` types
+            - Verify RFC 7807 error responses
+            - Verify audit fields (created_at, updated_at, created_by, updated_by) on entities
+            Report violations found.
+
+            ## 4. Security
+            - Check for hardcoded secrets, API keys, or passwords in source code
+            - Verify @Valid on request body parameters
+            - Verify authentication requirements on endpoints
+            - Check for potential SQL injection (string concatenation in queries)
+            - Check for missing input validation
+            Report security concerns.
+
+            ## 5. Architecture
+            - Verify no business logic in controllers (controllers should only delegate to services)
+            - Verify controllers don't call repositories directly
+            - Verify proper interface abstractions where appropriate
+            Report architectural violations.
+
+            ## Output Format
+            Output ONLY a valid JSON array of findings. Each finding must have this exact structure:
+            ```json
+            [
+              {
+                "category": "roadmap|testing|quality|security|architecture",
+                "severity": "critical|high|medium|low",
+                "effort": "small|medium|large",
+                "title": "Short descriptive title",
+                "file": "path/to/affected/file or null",
+                "description": "Detailed description of the finding",
+                "recommendation": "Specific actionable recommendation"
+              }
+            ]
+            ```
+
+            Rules:
+            - Only report REAL findings you can verify by reading actual files
+            - Do NOT hallucinate file paths — verify every file reference exists
+            - Minimum severity from audit-config.yml: low
+            - Be specific — include exact file paths and line numbers where possible
+            - Maximum 20 findings per category
+
+      - name: Save findings artifact
+        if: always()
+        run: |
+          mkdir -p audit-output
+          cat <<'FINDINGS_EOF' > audit-output/raw-findings.json
+          ${{ steps.audit.outputs.findings }}
+          FINDINGS_EOF
+        shell: bash
+
+      - name: Upload raw findings
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: raw-findings
+          path: audit-output/raw-findings.json
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Claude (Sonnet) independently verifies each finding
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Verify Findings
+    needs: audit
+    if: needs.audit.outputs.findings != ''
+    runs-on: ubuntu-latest
+    outputs:
+      verified: ${{ steps.verify.outputs.verified_findings }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify findings
+        id: verify
+        uses: anthropics/claude-code-action@v1
+        with:
+          model: claude-sonnet-4-20250514
+          max_turns: 20
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a verification agent. Your job is to independently verify audit findings by reading the actual source files referenced.
+
+            Here are the raw findings from the audit:
+            ```json
+            ${{ needs.audit.outputs.findings }}
+            ```
+
+            For EACH finding:
+            1. If a file path is referenced, READ that file and confirm the issue exists
+            2. If the finding claims something is missing, verify it is actually missing by searching for it
+            3. Mark each finding as "verified" or "false_positive"
+            4. If verified, keep the original finding data intact
+            5. If false positive, explain why
+
+            Output ONLY a valid JSON array with the verified findings. Each item must have:
+            ```json
+            [
+              {
+                "category": "...",
+                "severity": "...",
+                "effort": "...",
+                "title": "...",
+                "file": "...",
+                "description": "...",
+                "recommendation": "...",
+                "verification": "verified|false_positive",
+                "verification_note": "Brief explanation of verification result"
+              }
+            ]
+            ```
+
+            Rules:
+            - Remove all false_positive findings from the output
+            - Only output findings with verification: "verified"
+            - Do NOT add new findings — only verify existing ones
+            - Be strict: if you cannot confirm the issue, mark it false_positive
+
+      - name: Save verified findings
+        if: always()
+        run: |
+          mkdir -p audit-output
+          cat <<'VERIFIED_EOF' > audit-output/verified-findings.json
+          ${{ steps.verify.outputs.verified_findings }}
+          VERIFIED_EOF
+        shell: bash
+
+      - name: Upload verified findings
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: verified-findings
+          path: audit-output/verified-findings.json
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Create deduplicated GitHub Issues (pure bash + gh CLI, no AI cost)
+  # ---------------------------------------------------------------------------
+  create-issues:
+    name: Create Issues
+    needs: verify
+    if: needs.verify.outputs.verified != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create deduplicated issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_FINDINGS: ${{ needs.verify.outputs.verified }}
+        run: |
+          set -euo pipefail
+
+          MAX_ISSUES=10
+          DEDUP_DAYS=30
+          ISSUES_CREATED=0
+
+          # Parse findings from JSON
+          echo "$VERIFIED_FINDINGS" | jq -c '.[]' | while read -r finding; do
+            if [ "$ISSUES_CREATED" -ge "$MAX_ISSUES" ]; then
+              echo "Reached max issues per run ($MAX_ISSUES). Stopping."
+              break
+            fi
+
+            # Extract fields
+            category=$(echo "$finding" | jq -r '.category')
+            severity=$(echo "$finding" | jq -r '.severity')
+            effort=$(echo "$finding" | jq -r '.effort')
+            title=$(echo "$finding" | jq -r '.title')
+            file=$(echo "$finding" | jq -r '.file // "N/A"')
+            description=$(echo "$finding" | jq -r '.description')
+            recommendation=$(echo "$finding" | jq -r '.recommendation')
+            verification_note=$(echo "$finding" | jq -r '.verification_note // "Verified by secondary model"')
+
+            # Dedup: check if an open issue with similar title exists
+            search_query="[audit] ${title}"
+            existing=$(gh issue list \
+              --label "audit-finding" \
+              --state open \
+              --search "${search_query}" \
+              --json number \
+              --jq 'length' 2>/dev/null || echo "0")
+
+            if [ "$existing" -gt 0 ]; then
+              echo "Skipping duplicate: ${title}"
+              continue
+            fi
+
+            # Also check recently closed issues (within dedup window)
+            since_date=$(date -u -d "${DEDUP_DAYS} days ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || \
+                         date -u -v-${DEDUP_DAYS}d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || \
+                         echo "")
+
+            if [ -n "$since_date" ]; then
+              recently_closed=$(gh issue list \
+                --label "audit-finding" \
+                --state closed \
+                --search "${search_query}" \
+                --json closedAt,number \
+                --jq "[.[] | select(.closedAt >= \"${since_date}\")] | length" 2>/dev/null || echo "0")
+
+              if [ "$recently_closed" -gt 0 ]; then
+                echo "Skipping recently closed duplicate: ${title}"
+                continue
+              fi
+            fi
+
+            # Build issue body
+            body=$(cat <<ISSUE_BODY
+          ## Audit Finding
+
+          **Category:** ${category}
+          **Severity:** ${severity}
+          **Effort:** ${effort}
+          **File:** \`${file}\`
+
+          ### Description
+
+          ${description}
+
+          ### Recommendation
+
+          ${recommendation}
+
+          ### Verification
+
+          ${verification_note}
+
+          ---
+          *Generated by [Nightly AI Audit](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) on $(date -u +%Y-%m-%d)*
+          ISSUE_BODY
+          )
+
+            # Create the issue with labels
+            issue_title="[audit] ${title}"
+            gh issue create \
+              --title "${issue_title}" \
+              --body "${body}" \
+              --label "audit-finding" \
+              --label "audit-${category}" \
+              --label "severity-${severity}" \
+              --label "effort-${effort}"
+
+            echo "Created issue: ${issue_title}"
+            ISSUES_CREATED=$((ISSUES_CREATED + 1))
+          done
+
+          echo "Total issues created: ${ISSUES_CREATED}"
+        shell: bash

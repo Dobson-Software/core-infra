@@ -1,0 +1,32 @@
+# =============================================
+# Cobalt Backend — Test Runner
+# =============================================
+
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
+
+COPY settings.gradle.kts build.gradle.kts ./
+COPY platform-common/ platform-common/
+COPY core-service/ core-service/
+COPY notification-service/ notification-service/
+COPY violations-service/ violations-service/
+COPY config/ config/
+COPY gradle/ gradle/
+COPY gradlew ./
+RUN chmod +x gradlew
+
+# Download dependencies
+RUN ./gradlew dependencies --no-daemon
+
+# Stage: Unit Tests
+FROM eclipse-temurin:21-jdk AS unit-tests
+WORKDIR /app
+COPY --from=0 /app /app
+CMD ["./gradlew", "test", "--no-daemon"]
+
+# Stage: Integration Tests
+FROM eclipse-temurin:21-jdk AS integration-tests
+WORKDIR /app
+COPY --from=0 /app /app
+# Integration tests need Docker socket for TestContainers
+CMD ["./gradlew", "integrationTest", "--no-daemon"]

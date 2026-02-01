@@ -1,0 +1,35 @@
+# =============================================
+# Cobalt Notification Service — Docker Build
+# =============================================
+
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk AS builder
+WORKDIR /app
+
+COPY settings.gradle.kts build.gradle.kts ./
+COPY platform-common/ platform-common/
+COPY notification-service/ notification-service/
+COPY gradle/ gradle/
+COPY gradlew ./
+RUN chmod +x gradlew
+
+RUN ./gradlew :notification-service:bootJar --no-daemon -x test -x checkstyleMain -x checkstyleTest -x checkNoMocks
+
+# Stage 2: Runtime
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+RUN addgroup -g 1001 -S cobalt && \
+    adduser -S cobalt -u 1001 -G cobalt
+
+COPY --from=builder /app/notification-service/build/libs/notification-service.jar app.jar
+
+RUN chown cobalt:cobalt app.jar
+USER cobalt
+
+EXPOSE 8081
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+    CMD wget -qO- http://localhost:8081/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]

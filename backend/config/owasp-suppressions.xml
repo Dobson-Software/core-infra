@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency-Check Suppressions File
+
+        Add suppression entries for false positives here.
+        Each suppression should include a comment explaining why the CVE is suppressed.
+
+        Example:
+        <suppress>
+            <notes><![CDATA[
+                This is a false positive. The vulnerability applies to a different
+                component with the same name.
+            ]]></notes>
+            <packageUrl regex="true">^pkg:maven/com\.example/.*$</packageUrl>
+            <cve>CVE-2024-XXXXX</cve>
+        </suppress>
+    -->
+</suppressions>
