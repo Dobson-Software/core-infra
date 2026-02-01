@@ -1,0 +1,43 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: core-service
+  namespace: cobalt-services
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: core-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service
+  namespace: cobalt-services
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: notification-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: violations-service
+  namespace: cobalt-services
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: violations-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend
+  namespace: cobalt-services
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: frontend

@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+*.md
+node_modules
+**/node_modules
+**/dist
+**/build
+**/.gradle
+**/build/
+**/.terraform
+**/*.tfstate
+**/*.tfstate.backup
+.env
+.env.*
+**/.DS_Store

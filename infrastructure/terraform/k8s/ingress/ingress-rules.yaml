@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cobalt-ingress
+  namespace: cobalt-services
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}, {"HTTP": 80}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Substituted via envsubst during deployment
+    alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
+    alb.ingress.kubernetes.io/group.name: cobalt
+    # Per-service health checks (backend services use /actuator/health, frontend uses /)
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/actions.core-service: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"core-service","servicePort":"8080"}]}}'
+    alb.ingress.kubernetes.io/conditions.core-service: '{"field":"path-pattern","pathPatternConfig":{"values":["/api/*"]}}'
+    alb.ingress.kubernetes.io/target-group-attributes.core-service: "deregistration_delay.timeout_seconds=30"
+    alb.ingress.kubernetes.io/healthcheck-path.core-service: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.notification-service: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.violations-service: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.frontend: /
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /api/v1/violations
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8081
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: core-service
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

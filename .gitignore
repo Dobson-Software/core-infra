@@ -1,0 +1,130 @@
+# =====================
+# Build outputs
+# =====================
+build/
+out/
+dist/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# =====================
+# Gradle
+# =====================
+.gradle/
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# =====================
+# Node.js / Frontend
+# =====================
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+.nuxt/
+.vite/
+*.tsbuildinfo
+
+# =====================
+# IDE — IntelliJ IDEA
+# =====================
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+# =====================
+# IDE — Eclipse
+# =====================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# =====================
+# IDE — NetBeans
+# =====================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# =====================
+# IDE — VS Code
+# =====================
+.vscode/
+
+# =====================
+# Environment / Secrets
+# =====================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+service-account.json
+
+# =====================
+# OS files
+# =====================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# =====================
+# Test outputs
+# =====================
+coverage/
+test-results/
+playwright-report/
+blob-report/
+*.lcov
+jacoco/
+jacoco.exec
+
+# =====================
+# Docker
+# =====================
+docker-compose.override.yml
+
+# =====================
+# Terraform
+# =====================
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# =====================
+# Logs
+# =====================
+*.log
+logs/
+
+# =====================
+# Misc
+# =====================
+*.bak
+*.tmp
+*.temp
+.cache/

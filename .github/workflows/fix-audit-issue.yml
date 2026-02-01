@@ -1,0 +1,174 @@
+name: Fix Audit Issue
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  fix:
+    name: Implement Fix
+    if: github.event.label.name == 'audit-approved'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Extract issue details
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --json title --jq '.title')
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUMBER" --json body --jq '.body')
+
+          echo "number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "title=${ISSUE_TITLE}" >> "$GITHUB_OUTPUT"
+
+          # Save body to file (may contain special chars)
+          echo "$ISSUE_BODY" > /tmp/issue-body.txt
+
+          # Create branch name from issue number
+          BRANCH="fix/audit-${ISSUE_NUMBER}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Create fix branch
+        run: |
+          git checkout -b "${{ steps.issue.outputs.branch }}"
+
+      - name: Implement fix with self-review
+        id: fix
+        uses: anthropics/claude-code-action@v1
+        with:
+          model: claude-opus-4-5-20251101
+          max_turns: 40
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are implementing a fix for an audit finding in the Cobalt platform.
+
+            ## Issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}
+
+            Issue details:
+            $(cat /tmp/issue-body.txt)
+
+            ## Instructions
+
+            1. Read CLAUDE.md to understand the project standards
+            2. Read audit/audit-config.yml for audit rules context
+            3. Analyze the issue and identify what needs to change
+            4. Implement the fix following ALL Cobalt standards:
+               - tenant_id on all entities and queries
+               - No mocking (TestContainers, GreenMail, WireMock only)
+               - MapStruct for object mapping
+               - @Transactional on service methods
+               - RFC 7807 error responses
+               - Proper HTTP status codes
+               - TypeScript strict mode, no `any`
+               - Integration tests for all backend changes
+               - Unit tests for all frontend changes
+               - Flyway migrations for schema changes
+
+            5. After implementing, perform a 3-pass self-review:
+
+            ### Pass 1: Correctness
+            - Is the logic correct? Any edge cases missed?
+            - Null safety — are null checks present where needed?
+            - Are error paths handled properly?
+            - Does the fix actually resolve the audit finding?
+
+            ### Pass 2: Standards Compliance
+            - Does every new entity have tenant_id and audit fields?
+            - Are all queries tenant-scoped?
+            - Are there any mock imports? (MUST NOT have any)
+            - Is MapStruct used for all mappings?
+            - Do controllers only delegate to services?
+            - Are @Valid annotations on request bodies?
+            - Do error responses follow RFC 7807?
+
+            ### Pass 3: Completeness
+            - Are integration tests written for all new/changed backend code?
+            - Are unit tests written for all new/changed frontend code?
+            - Are Flyway migrations created for any schema changes?
+            - Is the API client updated if endpoints changed?
+            - Are TanStack Query hooks updated if API changed?
+
+            6. If any self-review pass fails, fix the issues before finishing
+            7. Stage and commit all changes with message: "fix: [audit-${{ steps.issue.outputs.number }}] <description>"
+
+            DO NOT push — the workflow handles that.
+
+      - name: Push branch and create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=${{ steps.issue.outputs.number }}
+          BRANCH=${{ steps.issue.outputs.branch }}
+          ISSUE_TITLE=${{ steps.issue.outputs.title }}
+
+          # Check if there are actual changes
+          if git diff --cached --quiet && git diff HEAD --quiet; then
+            echo "No changes were made. Commenting on issue."
+            gh issue comment "$ISSUE_NUMBER" \
+              --body "Audit fix attempted but no changes were needed. The issue may have already been resolved or requires manual intervention."
+            exit 0
+          fi
+
+          # Push branch
+          git push origin "$BRANCH"
+
+          # Build PR body
+          PR_BODY=$(cat <<'PR_EOF'
+          ## Summary
+
+          Automated fix for audit finding #$ISSUE_NUMBER.
+
+          - Implements the recommended fix from the nightly audit
+          - Includes 3-pass self-review (correctness, standards, completeness)
+          - All changes follow CLAUDE.md standards
+
+          ## Audit Finding
+
+          See #$ISSUE_NUMBER for full details.
+
+          ## Self-Review Checklist
+
+          - [x] Pass 1: Correctness — logic, edge cases, null safety
+          - [x] Pass 2: Standards — tenant_id, no mocks, MapStruct, RFC 7807
+          - [x] Pass 3: Completeness — tests, migrations, API client
+
+          ## Test plan
+
+          - [ ] Quality gate passes (automated)
+          - [ ] Manual review of changes
+          - [ ] Verify audit finding is resolved
+
+          ---
+          *Generated by [Fix Audit Issue](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*
+
+          Closes #$ISSUE_NUMBER
+          PR_EOF
+          )
+
+          # Substitute issue number in body
+          PR_BODY=$(echo "$PR_BODY" | sed "s/\$ISSUE_NUMBER/${ISSUE_NUMBER}/g")
+
+          # Create PR
+          PR_URL=$(gh pr create \
+            --title "[audit-${ISSUE_NUMBER}] ${ISSUE_TITLE#\[audit\] }" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH" \
+            --label "audit-fix" \
+            --label "automated")
+
+          echo "Created PR: ${PR_URL}"
+
+          # Comment on issue with PR link
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "Fix implemented and PR created: ${PR_URL}"

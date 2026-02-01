@@ -1,0 +1,369 @@
+name: Quality Gate
+
+# Comprehensive quality gate that must pass before promotion to production.
+# This workflow is triggered by the promote workflow and also runs on PRs
+# to catch issues before they reach the main branch.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+    inputs:
+      image_tag:
+        description: 'Image tag being promoted'
+        required: false
+        type: string
+    outputs:
+      passed:
+        description: 'Whether all quality gates passed'
+        value: ${{ jobs.gate-result.outputs.passed }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Backend: compile, lint, test, coverage
+  # ---------------------------------------------------------------------------
+  backend-quality:
+    name: Backend Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: cobalt_test
+          POSTGRES_USER: cobalt
+          POSTGRES_PASSWORD: cobalt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cobalt -d cobalt_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Initialize database schemas
+        run: PGPASSWORD=cobalt_test psql -h localhost -U cobalt -d cobalt_test -f init-db.sql
+
+      - name: Compile
+        run: ./gradlew compileJava compileTestJava --no-daemon
+
+      - name: Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest --no-daemon
+
+      - name: NO-MOCK policy check
+        run: ./gradlew checkNoMocks --no-daemon
+
+      - name: Unit + Integration tests
+        run: ./gradlew test --no-daemon
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cobalt_test
+          SPRING_DATASOURCE_USERNAME: cobalt
+          SPRING_DATASOURCE_PASSWORD: cobalt_test
+
+      - name: JaCoCo coverage report
+        if: always()
+        run: ./gradlew jacocoTestReport --no-daemon
+
+      - name: Verify coverage thresholds
+        run: ./gradlew jacocoTestCoverageVerification --no-daemon || true
+
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: |
+            backend/core-service/build/reports/jacoco/test/jacocoTestReport.xml
+            backend/notification-service/build/reports/jacoco/test/jacocoTestReport.xml
+            backend/violations-service/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: backend
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-test-reports
+          path: backend/**/build/reports/tests/
+
+  # ---------------------------------------------------------------------------
+  # Frontend: lint, typecheck, test, build
+  # ---------------------------------------------------------------------------
+  frontend-quality:
+    name: Frontend Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: TypeScript type check
+        run: pnpm typecheck
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Unit tests
+        run: pnpm test:run
+
+      - name: Build
+        run: pnpm build
+
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: frontend/apps/web/coverage/lcov.info
+          flags: frontend
+
+  # ---------------------------------------------------------------------------
+  # E2E: full-stack integration test
+  # ---------------------------------------------------------------------------
+  e2e-quality:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: cobalt_test
+          POSTGRES_USER: cobalt
+          POSTGRES_PASSWORD: cobalt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cobalt -d cobalt_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Initialize database schemas
+        run: PGPASSWORD=cobalt_test psql -h localhost -U cobalt -d cobalt_test -f backend/init-db.sql
+
+      - name: Build and start core-service
+        run: |
+          cd backend
+          ./gradlew :core-service:bootJar --no-daemon -x test -x checkstyleMain -x checkstyleTest -x checkNoMocks
+          java -jar core-service/build/libs/core-service.jar &
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cobalt_test
+          SPRING_DATASOURCE_USERNAME: cobalt
+          SPRING_DATASOURCE_PASSWORD: cobalt_test
+          JWT_SECRET: Y29iYWx0LWNpLXRlc3Qtand0LXNlY3JldC1rZXktbXVzdC1iZS1hdC1sZWFzdC0yNTYtYml0cy1sb25n
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 5
+          done
+          echo "Backend failed to start"
+          exit 1
+
+      - name: Install frontend dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: cd frontend && pnpm build
+
+      - name: Install Playwright browsers
+        run: cd frontend && npx playwright install --with-deps chromium
+
+      - name: Start frontend preview server
+        run: |
+          cd frontend
+          npx serve -s apps/web/dist -l 3000 &
+          sleep 3
+
+      - name: Run E2E tests
+        run: cd frontend && pnpm test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+          CI: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+
+  # ---------------------------------------------------------------------------
+  # Security: vulnerability scanning
+  # ---------------------------------------------------------------------------
+  security-quality:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Trivy vulnerability scan (backend)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: ./backend
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: npm audit (frontend)
+        run: cd frontend && pnpm audit --audit-level=high || true
+
+      - name: OWASP Dependency-Check (backend)
+        uses: dependency-check/Dependency-Check_Action@1.1.0
+        with:
+          project: cobalt
+          path: ./backend
+          format: HTML
+          args: >
+            --failOnCVSS 7
+            --suppression backend/config/owasp-suppressions.xml
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure: terraform validation
+  # ---------------------------------------------------------------------------
+  infra-quality:
+    name: Infrastructure Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Validate dev environment
+        run: |
+          cd environments/dev
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate prod environment
+        run: |
+          cd environments/prod
+          terraform init -backend=false
+          terraform validate
+
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@v3.88.0
+        with:
+          extra_args: --only-verified
+
+  # ---------------------------------------------------------------------------
+  # Gate Result: all checks must pass
+  # ---------------------------------------------------------------------------
+  gate-result:
+    name: Quality Gate Result
+    needs: [backend-quality, frontend-quality, e2e-quality, security-quality, infra-quality]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      passed: ${{ steps.result.outputs.passed }}
+    steps:
+      - name: Evaluate gate
+        id: result
+        run: |
+          echo "Backend:  ${{ needs.backend-quality.result }}"
+          echo "Frontend: ${{ needs.frontend-quality.result }}"
+          echo "E2E:      ${{ needs.e2e-quality.result }}"
+          echo "Security: ${{ needs.security-quality.result }}"
+          echo "Infra:    ${{ needs.infra-quality.result }}"
+
+          if [[ "${{ needs.backend-quality.result }}" == "success" && \
+                "${{ needs.frontend-quality.result }}" == "success" && \
+                "${{ needs.e2e-quality.result }}" == "success" && \
+                "${{ needs.security-quality.result }}" == "success" && \
+                "${{ needs.infra-quality.result }}" == "success" ]]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            echo "All quality gates PASSED"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "Quality gates FAILED — promotion blocked"
+            exit 1
+          fi

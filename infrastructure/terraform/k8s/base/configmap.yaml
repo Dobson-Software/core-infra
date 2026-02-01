@@ -1,0 +1,14 @@
+# NOTE: This manifest requires envsubst or Kustomize for variable substitution
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cobalt-config
+  namespace: cobalt-services
+  labels:
+    app.kubernetes.io/part-of: cobalt
+data:
+  redis-host: "${REDIS_HOST}"
+  redis-port: "6379"
+  db-host: "${DB_HOST}"
+  db-port: "5432"
+  db-name: "cobalt"

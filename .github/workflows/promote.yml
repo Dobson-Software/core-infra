@@ -1,0 +1,360 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to promote (from dev deployment)'
+        required: true
+        type: string
+      soak_duration:
+        description: 'Soak test duration in minutes'
+        required: false
+        default: '10'
+        type: string
+      skip_soak:
+        description: 'Skip soak testing (emergency deploys only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: cobalt-prod
+  NAMESPACE: cobalt-services
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Quality Gate — all tests, lints, and scans must pass before promotion
+  # ---------------------------------------------------------------------------
+  quality-gate:
+    name: Quality Gate
+    uses: ./.github/workflows/quality-gate.yml
+
+  # ---------------------------------------------------------------------------
+  # Pre-flight Validation — verify images exist in ECR
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Pre-flight Validation
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.validate.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Validate image exists in ECR
+        id: validate
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          ECR_REGISTRY="${{ steps.ecr.outputs.registry }}"
+
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Checking ${ECR_REGISTRY}/cobalt-${SERVICE}:${TAG}..."
+            if ! aws ecr describe-images \
+              --repository-name "cobalt-${SERVICE}" \
+              --image-ids imageTag="${TAG}" \
+              --region ${{ env.AWS_REGION }} > /dev/null 2>&1; then
+              echo "ERROR: Image cobalt-${SERVICE}:${TAG} not found in ECR"
+              exit 1
+            fi
+            echo "  Found."
+          done
+
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "All images validated for tag: ${TAG}"
+
+  deploy-green:
+    name: Deploy Green (New Version)
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      green_healthy: ${{ steps.health.outputs.healthy }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy green version
+        env:
+          IMAGE_TAG: ${{ needs.validate.outputs.image_tag }}
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          TAG="${IMAGE_TAG}"
+
+          # Create green deployments (suffixed with -green)
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Deploying green: ${SERVICE}..."
+
+            # Get current deployment as base
+            kubectl get deployment "cobalt-${SERVICE}" \
+              -n ${{ env.NAMESPACE }} -o yaml \
+              | sed "s/cobalt-${SERVICE}/cobalt-${SERVICE}-green/g" \
+              | sed "s|image: .*cobalt-${SERVICE}.*|image: ${ECR_REGISTRY}/cobalt-${SERVICE}:${TAG}|" \
+              | sed '/resourceVersion:/d' \
+              | sed '/uid:/d' \
+              | sed '/creationTimestamp:/d' \
+              | kubectl apply -f -
+
+            echo "  Green deployment created for ${SERVICE}"
+          done
+
+      - name: Wait for green pods to be ready
+        run: |
+          echo "Waiting for green deployments to become ready..."
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Waiting for cobalt-${SERVICE}-green..."
+            kubectl rollout status "deployment/cobalt-${SERVICE}-green" \
+              -n ${{ env.NAMESPACE }} \
+              --timeout=300s || {
+                echo "ERROR: Green deployment failed for ${SERVICE}"
+                exit 1
+              }
+          done
+          echo "All green deployments are ready."
+
+      - name: Health check green pods
+        id: health
+        run: |
+          HEALTHY=true
+
+          for SERVICE in core-service notification-service violations-service; do
+            PORT=$(case $SERVICE in
+              core-service) echo 8080 ;;
+              notification-service) echo 8081 ;;
+              violations-service) echo 8082 ;;
+            esac)
+
+            POD=$(kubectl get pods -n ${{ env.NAMESPACE }} \
+              -l app=cobalt-${SERVICE}-green \
+              -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+
+            if [[ -z "$POD" ]]; then
+              echo "ERROR: No green pod found for ${SERVICE}"
+              HEALTHY=false
+              continue
+            fi
+
+            # Port-forward and check health
+            kubectl port-forward "pod/${POD}" "${PORT}:${PORT}" \
+              -n ${{ env.NAMESPACE }} &
+            PF_PID=$!
+            sleep 3
+
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 10 "http://localhost:${PORT}/actuator/health" || echo "000")
+
+            kill $PF_PID 2>/dev/null || true
+            wait $PF_PID 2>/dev/null || true
+
+            if [[ "$STATUS" == "200" ]]; then
+              echo "  ${SERVICE}: healthy (HTTP ${STATUS})"
+            else
+              echo "  ${SERVICE}: UNHEALTHY (HTTP ${STATUS})"
+              HEALTHY=false
+            fi
+          done
+
+          echo "healthy=${HEALTHY}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$HEALTHY" != "true" ]]; then
+            echo "ERROR: Green deployment health checks failed"
+            exit 1
+          fi
+
+  soak-test:
+    name: Soak Test (${{ github.event.inputs.soak_duration }}m)
+    needs: [validate, deploy-green]
+    if: ${{ github.event.inputs.skip_soak != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Run soak test
+        env:
+          SOAK_MINUTES: ${{ github.event.inputs.soak_duration }}
+        run: |
+          SOAK_SECONDS=$((SOAK_MINUTES * 60))
+          INTERVAL=30
+          CHECKS=$((SOAK_SECONDS / INTERVAL))
+          FAILURES=0
+          MAX_FAILURES=3
+
+          echo "Starting soak test: ${SOAK_MINUTES} minutes, checking every ${INTERVAL}s"
+          echo "Will fail after ${MAX_FAILURES} consecutive failures"
+
+          for i in $(seq 1 $CHECKS); do
+            echo "--- Check ${i}/${CHECKS} ($(date -u +%H:%M:%S)) ---"
+            CHECK_OK=true
+
+            for SERVICE in core-service notification-service violations-service; do
+              READY=$(kubectl get deployment "cobalt-${SERVICE}-green" \
+                -n ${{ env.NAMESPACE }} \
+                -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+              DESIRED=$(kubectl get deployment "cobalt-${SERVICE}-green" \
+                -n ${{ env.NAMESPACE }} \
+                -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+
+              RESTARTS=$(kubectl get pods -n ${{ env.NAMESPACE }} \
+                -l app=cobalt-${SERVICE}-green \
+                -o jsonpath='{.items[*].status.containerStatuses[*].restartCount}' 2>/dev/null || echo "0")
+
+              if [[ "$READY" != "$DESIRED" || "$RESTARTS" -gt 0 ]]; then
+                echo "  WARN: ${SERVICE} — ready=${READY}/${DESIRED}, restarts=${RESTARTS}"
+                CHECK_OK=false
+              else
+                echo "  OK:   ${SERVICE} — ready=${READY}/${DESIRED}, restarts=${RESTARTS}"
+              fi
+            done
+
+            if [[ "$CHECK_OK" == "true" ]]; then
+              FAILURES=0
+            else
+              FAILURES=$((FAILURES + 1))
+              echo "  Consecutive failures: ${FAILURES}/${MAX_FAILURES}"
+              if [[ $FAILURES -ge $MAX_FAILURES ]]; then
+                echo "ERROR: Soak test failed — ${MAX_FAILURES} consecutive check failures"
+                exit 1
+              fi
+            fi
+
+            if [[ $i -lt $CHECKS ]]; then
+              sleep $INTERVAL
+            fi
+          done
+
+          echo "Soak test passed after ${SOAK_MINUTES} minutes."
+
+  cutover:
+    name: Cut Over Traffic
+    needs: [validate, deploy-green, soak-test]
+    if: ${{ always() && needs.deploy-green.result == 'success' && (needs.soak-test.result == 'success' || needs.soak-test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Update blue deployments to green image
+        env:
+          IMAGE_TAG: ${{ needs.validate.outputs.image_tag }}
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          TAG="${IMAGE_TAG}"
+
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Updating blue deployment: ${SERVICE} → ${TAG}..."
+            kubectl set image "deployment/cobalt-${SERVICE}" \
+              "${SERVICE}=${ECR_REGISTRY}/cobalt-${SERVICE}:${TAG}" \
+              -n ${{ env.NAMESPACE }}
+          done
+
+          # Wait for rollout
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Waiting for cobalt-${SERVICE} rollout..."
+            kubectl rollout status "deployment/cobalt-${SERVICE}" \
+              -n ${{ env.NAMESPACE }} --timeout=300s
+          done
+
+          echo "All blue deployments updated."
+
+      - name: Clean up green deployments
+        run: |
+          for SERVICE in core-service notification-service violations-service frontend; do
+            echo "Removing green deployment: cobalt-${SERVICE}-green"
+            kubectl delete deployment "cobalt-${SERVICE}-green" \
+              -n ${{ env.NAMESPACE }} --ignore-not-found=true
+          done
+          echo "Green deployments cleaned up."
+
+      - name: Verify final state
+        run: |
+          echo "=== Final Deployment State ==="
+          kubectl get deployments -n ${{ env.NAMESPACE }} -o wide
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+
+  rollback:
+    name: Rollback (on failure)
+    needs: [validate, deploy-green, soak-test]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Remove green deployments
+        run: |
+          echo "Rolling back — removing all green deployments..."
+          for SERVICE in core-service notification-service violations-service frontend; do
+            kubectl delete deployment "cobalt-${SERVICE}-green" \
+              -n ${{ env.NAMESPACE }} --ignore-not-found=true
+            echo "  Removed cobalt-${SERVICE}-green"
+          done
+          echo "Rollback complete. Blue (current) deployments unchanged."
+
+      - name: Verify blue is healthy
+        run: |
+          echo "Verifying blue deployments are still healthy..."
+          for SERVICE in core-service notification-service violations-service frontend; do
+            READY=$(kubectl get deployment "cobalt-${SERVICE}" \
+              -n ${{ env.NAMESPACE }} \
+              -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            echo "  cobalt-${SERVICE}: ${READY} ready replicas"
+          done

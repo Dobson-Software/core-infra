@@ -1,0 +1,7 @@
+# Trivy Vulnerability Suppressions
+#
+# Add CVE IDs (one per line) for false positives or accepted risks.
+# Each entry should include a comment explaining the suppression.
+#
+# Example:
+# CVE-2024-XXXXX  # False positive: applies to different component

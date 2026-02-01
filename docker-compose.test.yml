@@ -1,0 +1,144 @@
+services:
+  # =====================
+  # Test Infrastructure
+  # =====================
+
+  test-postgres:
+    image: postgres:15-alpine
+    container_name: cobalt-test-postgres
+    environment:
+      POSTGRES_DB: cobalt_test
+      POSTGRES_USER: cobalt
+      POSTGRES_PASSWORD: cobalt_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cobalt -d cobalt_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - cobalt-test-network
+
+  # =====================
+  # Backend Tests
+  # =====================
+
+  backend-unit-tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+      target: unit-tests
+    container_name: cobalt-backend-unit-tests
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://test-postgres:5432/cobalt_test
+      SPRING_DATASOURCE_USERNAME: cobalt
+      SPRING_DATASOURCE_PASSWORD: cobalt_test
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    volumes:
+      - backend-test-results:/app/build/reports
+    networks:
+      - cobalt-test-network
+
+  backend-integration-tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+      target: integration-tests
+    container_name: cobalt-backend-integration-tests
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://test-postgres:5432/cobalt_test
+      SPRING_DATASOURCE_USERNAME: cobalt
+      SPRING_DATASOURCE_PASSWORD: cobalt_test
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - backend-test-results:/app/build/reports
+    networks:
+      - cobalt-test-network
+
+  # =====================
+  # Frontend Tests
+  # =====================
+
+  frontend-unit-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    container_name: cobalt-frontend-unit-tests
+    volumes:
+      - frontend-coverage:/app/coverage
+    networks:
+      - cobalt-test-network
+
+  # =====================
+  # E2E Tests
+  # =====================
+
+  core-service-e2e:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.core
+    container_name: cobalt-core-service-e2e
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://test-postgres:5432/cobalt_test
+      SPRING_DATASOURCE_USERNAME: cobalt
+      SPRING_DATASOURCE_PASSWORD: cobalt_test
+      SPRING_REDIS_HOST: ""
+      SPRING_FLYWAY_SCHEMAS: core
+      JWT_SECRET: Y29iYWx0LXRlc3Qtc2VjcmV0LWtleQ==
+      SERVER_PORT: 8080
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cobalt-test-network
+
+  frontend-server:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.e2e-server
+    container_name: cobalt-frontend-e2e-server
+    ports:
+      - "3001:3000"
+    networks:
+      - cobalt-test-network
+
+  frontend-e2e-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.playwright
+    container_name: cobalt-frontend-e2e-tests
+    environment:
+      BASE_URL: http://frontend-server:3000
+      API_URL: http://core-service-e2e:8080
+    depends_on:
+      frontend-server:
+        condition: service_started
+      core-service-e2e:
+        condition: service_healthy
+    volumes:
+      - playwright-report:/app/playwright-report
+    networks:
+      - cobalt-test-network
+
+volumes:
+  backend-test-results:
+  frontend-coverage:
+  playwright-report:
+
+networks:
+  cobalt-test-network:
+    driver: bridge

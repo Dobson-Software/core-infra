@@ -1,0 +1,51 @@
+name: Terraform Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'infrastructure/terraform/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/terraform/**'
+
+jobs:
+  terraform-test:
+    name: Terraform Module Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/terraform
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Run networking module tests
+        run: |
+          cd modules/networking
+          terraform init -backend=false
+          terraform test
+
+      - name: Run database module tests
+        run: |
+          cd modules/database
+          terraform init -backend=false
+          terraform test
+
+      - name: Run security module tests
+        run: |
+          cd modules/security
+          terraform init -backend=false
+          terraform test
+
+      - name: Run EKS module tests
+        run: |
+          cd modules/eks
+          terraform init -backend=false
+          terraform test

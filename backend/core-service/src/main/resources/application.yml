@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: core-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cobalt}
+    username: ${SPRING_DATASOURCE_USERNAME:cobalt}
+    password: ${SPRING_DATASOURCE_PASSWORD:cobalt_dev}
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL:10}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+  flyway:
+    schemas: core
+    create-schemas: true
+    baseline-on-migrate: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: core
+  cache:
+    type: caffeine
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+logging:
+  level:
+    com.cobalt: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  structured:
+    format:
+      console: ${LOGGING_STRUCTURED_FORMAT_CONSOLE:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+
+jwt:
+  secret: ${JWT_SECRET:Y29iYWx0LXBsYXRmb3JtLWRldi1qd3Qtc2VjcmV0LWtleS0yMDI1LW11c3QtYmUtYXQtbGVhc3QtMjU2LWJpdHM=}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:86400000}
+
+cobalt:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  rate-limit:
+    auth:
+      login-per-minute: 10
+      register-per-minute: 5
+    tenant:
+      requests-per-minute: 1000
