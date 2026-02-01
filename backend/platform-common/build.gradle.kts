@@ -44,7 +44,7 @@ dependencies {
     // Test Fixtures
     testFixturesImplementation("org.springframework.boot:spring-boot-starter-test")
     testFixturesImplementation("org.springframework:spring-test")
-    testFixturesImplementation("org.testcontainers:testcontainers:1.21.4")
-    testFixturesImplementation("org.testcontainers:junit-jupiter:1.21.4")
-    testFixturesImplementation("org.testcontainers:postgresql:1.21.4")
+    testFixturesImplementation("org.testcontainers:testcontainers:2.0.3")
+    testFixturesImplementation("org.testcontainers:junit-jupiter:2.0.3")
+    testFixturesImplementation("org.testcontainers:postgresql:2.0.3")
 }
