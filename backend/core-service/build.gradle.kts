@@ -34,7 +34,7 @@ dependencies {
     implementation("com.stripe:stripe-java:24.15.0")
 
     // Twilio
-    implementation("com.twilio.sdk:twilio:10.1.0")
+    implementation("com.twilio.sdk:twilio:11.3.2")
 
     // PDF generation
     implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
