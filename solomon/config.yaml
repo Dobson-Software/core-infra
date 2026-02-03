@@ -1,0 +1,62 @@
+# Solomon Platform Control Plane — Configuration
+# This file provides defaults; environment variables override these values.
+# Env var format: SOLOMON_<SECTION>_<KEY> (e.g., SOLOMON_SERVER_PORT)
+
+server:
+  port: 8080
+  environment: development
+  shutdown_timeout: 30
+
+database:
+  host: localhost
+  port: 5432
+  user: solomon
+  password: solomon_dev
+  database: solomon
+  ssl_mode: disable
+  max_conns: 25
+  min_conns: 5
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+auth:
+  jwt_secret: "change-me-in-production"
+  oidc_issuer: ""
+  oidc_client_id: ""
+  allowed_emails: []
+
+aws:
+  region: us-east-1
+  secrets_prefix: solomon
+  cost_explorer_enabled: true
+  assume_role_arn: ""
+
+github:
+  app_id: 0
+  installation_id: 0
+  private_key_path: ""
+  webhook_secret: ""
+
+anthropic:
+  api_key: ""
+  default_model: claude-sonnet-4-20250514
+  max_tokens: 4096
+
+argocd:
+  server_url: ""
+  auth_token: ""
+  insecure: false
+
+pagerduty:
+  api_key: ""
+  service_id: ""
+  webhook_secret: ""
+
+axiom:
+  api_token: ""
+  org_id: ""
+  dataset: "solomon-logs"

@@ -1,0 +1,206 @@
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --solomon-purple: #6366f1;
+  --solomon-purple-dark: #4f46e5;
+  --solomon-violet: #8b5cf6;
+
+  --sidebar-width: 240px;
+  --topbar-height: 50px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #1c2127;
+  color: #f5f8fa;
+}
+
+/* Blueprint overrides for Solomon branding */
+.bp5-dark .bp5-button.bp5-intent-primary {
+  background-color: var(--solomon-purple);
+}
+
+.bp5-dark .bp5-button.bp5-intent-primary:hover {
+  background-color: var(--solomon-purple-dark);
+}
+
+.bp5-dark .bp5-menu-item.bp5-intent-primary.bp5-active {
+  background-color: var(--solomon-purple);
+}
+
+/* Layout */
+.app-layout {
+  display: flex;
+  height: 100%;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: #252a31;
+  border-right: 1px solid #383e47;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #383e47;
+}
+
+.sidebar-logo img {
+  width: 32px;
+  height: 32px;
+}
+
+.sidebar-logo h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f5f8fa;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  height: var(--topbar-height);
+  background-color: #252a31;
+  border-bottom: 1px solid #383e47;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Page headers */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Cards */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  padding: 20px;
+}
+
+.stat-card .stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-label {
+  color: #a7b6c2;
+  font-size: 14px;
+}
+
+/* Terminal */
+.terminal-container {
+  background-color: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-header {
+  background-color: #161b22;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #30363d;
+}
+
+.terminal-header .session-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.terminal-body {
+  flex: 1;
+  padding: 8px;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.healthy {
+  background-color: rgba(35, 133, 81, 0.2);
+  color: #3fb950;
+}
+
+.status-badge.degraded {
+  background-color: rgba(187, 128, 9, 0.2);
+  color: #d29922;
+}
+
+.status-badge.down {
+  background-color: rgba(248, 81, 73, 0.2);
+  color: #f85149;
+}
+
+/* Tables */
+.bp5-dark .bp5-html-table {
+  width: 100%;
+}
+
+.bp5-dark .bp5-html-table th {
+  background-color: #252a31;
+}

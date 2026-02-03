@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: solomon-postgres
+    environment:
+      POSTGRES_DB: solomon
+      POSTGRES_USER: solomon
+      POSTGRES_PASSWORD: solomon_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solomon -d solomon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: solomon-redis
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  solomon:
+    build: .
+    container_name: solomon-api
+    ports:
+      - "8080:8080"
+    environment:
+      SOLOMON_ENV: development
+      SOLOMON_DATABASE_HOST: postgres
+      SOLOMON_DATABASE_PORT: 5432
+      SOLOMON_DATABASE_USER: solomon
+      SOLOMON_DATABASE_PASSWORD: solomon_dev
+      SOLOMON_DATABASE_DATABASE: solomon
+      SOLOMON_REDIS_HOST: redis
+      SOLOMON_REDIS_PORT: 6379
+      SOLOMON_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SOLOMON_AWS_REGION: ${AWS_REGION:-us-east-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
