@@ -113,7 +113,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9.15.4
 
@@ -184,7 +184,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9.15.4
 
@@ -270,7 +270,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9.15.4
 
