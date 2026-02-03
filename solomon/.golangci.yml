@@ -1,0 +1,111 @@
+# Solomon golangci-lint configuration
+# Enforces code quality and NO-MOCK policy
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - unparam
+    - gosec
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+    - rowserrcheck
+    - exportloopref
+    - gocritic
+    - revive
+    - forbidigo
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    check-shadowing: true
+
+  goimports:
+    local-prefixes: github.com/dobson-software/core-infra
+
+  misspell:
+    locale: US
+
+  gosec:
+    excludes:
+      - G104 # Unhandled errors (handled by errcheck)
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+
+  # NO-MOCK POLICY: Forbid mock library imports
+  forbidigo:
+    forbid:
+      # Go mock libraries - BANNED
+      - p: ^github\.com/golang/mock.*$
+        msg: "gomock is banned. Use testcontainers-go or httptest.Server instead."
+      - p: ^go\.uber\.org/mock.*$
+        msg: "uber mock is banned. Use testcontainers-go or httptest.Server instead."
+      - p: ^github\.com/stretchr/testify/mock.*$
+        msg: "testify/mock is banned. Use testcontainers-go or httptest.Server instead."
+      - p: ^github\.com/vektra/mockery.*$
+        msg: "mockery is banned. Use testcontainers-go or httptest.Server instead."
+      - p: ^github\.com/agiledragon/gomonkey.*$
+        msg: "gomonkey is banned. Use testcontainers-go or httptest.Server instead."
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+
+    # Exclude long lines in generated files
+    - path: \.pb\.go$
+      linters:
+        - all
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
