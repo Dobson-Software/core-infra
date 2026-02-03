@@ -1,52 +1,36 @@
-# Cobalt Platform — Coding Guidelines & Architecture Reference
+# Core Infrastructure — Coding Guidelines & Architecture Reference
 
 ## Project Overview
 
-**Cobalt** is a multi-tenant business management platform for HVAC and plumbing professionals. It provides job scheduling, customer relationship management, invoicing, permit tracking, NYC DOB violations monitoring, and notification capabilities.
+**Core Infrastructure** is a shared repository containing platform-level services and reusable modules for the Dobson Software ecosystem. The primary project is **Solomon**, an internal Platform Control Plane for managing deployments, services, costs, and incidents across all infrastructure.
 
-### Core Architecture
-- **Backend**: Java 21 / Spring Boot 3.4.x monorepo with 3 services
-- **Frontend**: React 18+ / TypeScript / Vite monorepo with 1 app
-- **Database**: PostgreSQL 15+ with per-service schemas
-- **Cache**: Redis 7+
-- **Infrastructure**: AWS (EKS, RDS, ElastiCache, S3, ECR)
-
-### Services
-| Service | Port | Schema | Purpose |
-|---|---|---|---|
-| `core-service` | 8080 | `core` | Jobs, scheduling, CRM, invoicing, estimates |
-| `notification-service` | 8081 | `notification` | Email/SMS delivery, templates, preferences |
-| `violations-service` | 8082 | `violations` | NYC DOB violations data via Socrata OData API |
-
-### Frontend Apps
-| App | Port | Purpose |
+### Projects
+| Project | Language | Purpose |
 |---|---|---|
-| `web` | 3000 | Business management app for HVAC/plumbing professionals |
+| `solomon/` | Go 1.22+ / React 18+ | Platform Control Plane with AI-powered debugging |
 
 ---
 
 ## Tech Stack
 
-### Backend
-- **Language**: Java 21 (use records, sealed interfaces, pattern matching, text blocks)
-- **Framework**: Spring Boot 3.4.x with Spring Security, Spring Data JPA
-- **Build**: Gradle 8.x with Kotlin DSL
-- **Database**: PostgreSQL 15+ with Flyway migrations
-- **Mapping**: MapStruct 1.5.x (compile-time, never runtime reflection)
-- **Auth**: JWT (access + refresh tokens)
+### Solomon Backend (Go)
+- **Language**: Go 1.22+ (use generics, error wrapping, context propagation)
+- **Framework**: Chi router with middleware
+- **Database**: PostgreSQL 15+ with golang-migrate
+- **Cache**: Redis 7+ with go-redis
+- **Auth**: JWT + OIDC
 - **API Style**: REST with URL versioning (`/api/v1/...`)
-- **Testing**: JUnit 5, TestContainers, Spring Boot Test, GreenMail
-- **Code Quality**: Checkstyle, JaCoCo (80% overall, 95% service layer)
+- **Testing**: Go testing + testcontainers-go
+- **Code Quality**: golangci-lint, gofmt
 
-### Frontend
+### Solomon Frontend (React)
 - **Language**: TypeScript 5.x (strict mode, no `any`)
 - **Framework**: React 18+ with functional components only
-- **Build**: Vite 5.x with pnpm workspaces and Turborepo
+- **Build**: Vite 5.x with pnpm
 - **UI Library**: Blueprint.js 5.x
 - **State Management**: Zustand (client state), TanStack Query v5 (server state)
-- **Routing**: React Router v6
+- **Terminal**: xterm.js for AI Console
 - **Charts**: Recharts
-- **DnD**: dnd-kit
 - **Testing**: Vitest (unit), Playwright (E2E)
 - **Code Quality**: ESLint flat config, Prettier
 
@@ -56,43 +40,6 @@
 - **IaC**: Terraform
 - **CI/CD**: GitHub Actions
 - **Gateway**: Nginx (dev), AWS ALB (prod)
-
----
-
-## Multi-Tenancy Requirements
-
-### CRITICAL: Every feature MUST be tenant-scoped
-
-1. **Every table** has a `tenant_id UUID NOT NULL` column
-2. **Every query** includes `WHERE tenant_id = :tenantId`
-3. **Every API endpoint** resolves tenant from JWT claims
-4. **Every test** creates and uses a specific tenant context
-5. **No data leakage** — cross-tenant access is a security vulnerability
-
-### Tenant Resolution
-```java
-// Extract from JWT in SecurityContext
-UUID tenantId = SecurityContextHelper.getCurrentTenantId();
-
-// Pass to repository methods
-@Query("SELECT j FROM Job j WHERE j.tenantId = :tenantId AND j.id = :id")
-Optional<Job> findByTenantIdAndId(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
-```
-
-### Database Pattern
-```sql
-CREATE TABLE core.jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    -- domain columns...
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_by UUID,
-    updated_by UUID
-);
-
-CREATE INDEX idx_jobs_tenant ON core.jobs(tenant_id);
-```
 
 ---
 
@@ -132,13 +79,13 @@ CREATE INDEX idx_jobs_tenant ON core.jobs(tenant_id);
 ### Error Responses (RFC 7807)
 ```json
 {
-  "type": "https://cobalt.com/errors/validation",
+  "type": "https://solomon.internal/errors/validation",
   "title": "Validation Failed",
   "status": 400,
   "detail": "The request body contains invalid fields",
-  "instance": "/api/v1/jobs",
+  "instance": "/api/v1/services",
   "errors": [
-    { "field": "scheduledDate", "message": "must be a future date" }
+    { "field": "name", "message": "name is required" }
   ]
 }
 ```
@@ -159,242 +106,96 @@ CREATE INDEX idx_jobs_tenant ON core.jobs(tenant_id);
 
 ---
 
-## HVAC/Plumbing Supplier Integration
-
-### Strategy: Abstraction Layer
-HVAC/plumbing parts suppliers do not yet have standardized APIs. Cobalt implements an abstraction layer to support future integrations.
-
-### PartsSupplierService Pattern
-```java
-public interface PartsSupplierService {
-    List<PartSearchResult> searchParts(PartSearchCriteria criteria);
-    Optional<PartDetails> getPartDetails(String partNumber, String supplierCode);
-    PartAvailability checkAvailability(String partNumber, String supplierCode, String zipCode);
-    PurchaseOrder submitOrder(OrderRequest request);
-    OrderStatus getOrderStatus(String orderId, String supplierCode);
-}
-
-// Current implementation: manual catalog / CSV import
-@Service
-@Profile("default")
-public class ManualPartsSupplierService implements PartsSupplierService {
-    // Uses local catalog database
-}
-
-// Future: supplier-specific implementations
-@Service
-@Profile("supplier-fergusons")
-public class FergusonsPartsSupplierService implements PartsSupplierService {
-    // API integration when available
-}
-```
-
-### Supplier Domain Entities
-- `Part` — catalog item (partNumber, description, category, manufacturer)
-- `PartCategory` — HVAC/plumbing classification (enum: COMPRESSOR, CONDENSER, VALVE, PIPE_FITTING, etc.)
-- `PartAvailability` — stock status, lead time, warehouse location
-- `PurchaseOrder` — order placed with supplier
-- `SupplierCatalog` — imported catalog data (CSV, manual entry)
-
----
-
-## NYC DOB Violations Integration
-
-### Socrata Open Data API (SODA)
-The violations-service syncs and serves NYC Department of Buildings violation data.
-
-### API Endpoints
-- **SODA JSON**: `https://data.cityofnewyork.us/resource/3h2n-5cm9.json`
-- **OData v4**: `https://data.cityofnewyork.us/api/odata/v4/3h2n-5cm9`
-
-### Key Fields
-| Field | Description |
-|---|---|
-| `isn_dob_bis_viol` | Unique violation ID |
-| `boro` | Borough code |
-| `bin` | Building identification number |
-| `block` | Tax block |
-| `lot` | Tax lot |
-| `issue_date` | Date violation issued |
-| `violation_type_code` | Type classification |
-| `violation_number` | Violation number |
-| `house_number` | Street number |
-| `street` | Street name |
-| `disposition_date` | Resolution date |
-| `disposition_comments` | Resolution details |
-| `device_number` | Associated device |
-| `description` | Violation description |
-| `ecb_number` | ECB case number |
-| `number` | Internal number |
-| `violation_category` | Category classification |
-| `violation_type` | Detailed type |
-
-### Pagination
-- **SODA**: `$limit` + `$offset` (default 1000, max 50000 per request)
-- **OData**: `$top` + `$skip`
-
-### Sync Strategy
-```java
-@Scheduled(cron = "0 0 2 * * *")  // Daily at 2 AM
-public void syncViolations() {
-    // 1. Get last sync timestamp
-    // 2. Fetch violations modified since last sync
-    // 3. Upsert into local database
-    // 4. Update sync metadata
-}
-```
-
-### Filtering (SoQL)
-```
-$where=boro='MANHATTAN' AND issue_date > '2024-01-01'
-$where=bin='1234567'
-$where=violation_type='PLUMBING' OR violation_type='BOILER'
-```
-
----
-
-## Backend Patterns
+## Go Backend Patterns
 
 ### Service Layer
-```java
-@Service
-@RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class JobService {
-    private final JobRepository jobRepository;
-    private final JobMapper jobMapper;
-    private final EventPublisher eventPublisher;
+```go
+type CatalogService struct {
+    db     *pgxpool.Pool
+    redis  *redis.Client
+    logger *slog.Logger
+}
 
-    public JobResponse getJob(UUID tenantId, UUID jobId) {
-        Job job = jobRepository.findByTenantIdAndId(tenantId, jobId)
-            .orElseThrow(() -> new ResourceNotFoundException("Job", jobId));
-        return jobMapper.toResponse(job);
+func NewCatalogService(db *pgxpool.Pool, redis *redis.Client, logger *slog.Logger) *CatalogService {
+    return &CatalogService{db: db, redis: redis, logger: logger}
+}
+
+func (s *CatalogService) GetService(ctx context.Context, id uuid.UUID) (*models.Service, error) {
+    var svc models.Service
+    err := s.db.QueryRow(ctx, `
+        SELECT id, name, display_name, description, repository, team, tier,
+               language, framework, metadata, created_at, updated_at
+        FROM services WHERE id = $1
+    `, id).Scan(
+        &svc.ID, &svc.Name, &svc.DisplayName, &svc.Description, &svc.Repository,
+        &svc.Team, &svc.Tier, &svc.Language, &svc.Framework, &svc.Metadata,
+        &svc.CreatedAt, &svc.UpdatedAt,
+    )
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            return nil, ErrNotFound
+        }
+        return nil, fmt.Errorf("query service: %w", err)
+    }
+    return &svc, nil
+}
+```
+
+### Handler Layer
+```go
+func (h *Handlers) GetService(w http.ResponseWriter, r *http.Request) {
+    id, err := uuid.Parse(chi.URLParam(r, "id"))
+    if err != nil {
+        h.respondError(w, r, http.StatusBadRequest, "invalid service ID")
+        return
     }
 
-    @Transactional
-    public JobResponse createJob(UUID tenantId, CreateJobRequest request) {
-        Job job = jobMapper.toEntity(request);
-        job.setTenantId(tenantId);
-        job = jobRepository.save(job);
-        eventPublisher.publish(new JobCreatedEvent(job));
-        return jobMapper.toResponse(job);
+    svc, err := h.catalog.GetService(r.Context(), id)
+    if err != nil {
+        if errors.Is(err, catalog.ErrNotFound) {
+            h.respondError(w, r, http.StatusNotFound, "service not found")
+            return
+        }
+        h.logger.Error("failed to get service", "error", err)
+        h.respondError(w, r, http.StatusInternalServerError, "internal error")
+        return
+    }
+
+    h.respondJSON(w, r, http.StatusOK, svc)
+}
+```
+
+### Middleware Pattern
+```go
+func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            token := extractToken(r)
+            claims, err := validateToken(token, jwtSecret)
+            if err != nil {
+                http.Error(w, "unauthorized", http.StatusUnauthorized)
+                return
+            }
+            ctx := context.WithValue(r.Context(), userContextKey, claims)
+            next.ServeHTTP(w, r.WithContext(ctx))
+        })
     }
 }
 ```
 
-### Controller Layer
-```java
-@RestController
-@RequestMapping("/api/v1/jobs")
-@RequiredArgsConstructor
-public class JobController {
-    private final JobService jobService;
+### Error Handling
+```go
+var (
+    ErrNotFound     = errors.New("not found")
+    ErrConflict     = errors.New("conflict")
+    ErrUnauthorized = errors.New("unauthorized")
+)
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<JobResponse>> getJob(@PathVariable UUID id) {
-        UUID tenantId = SecurityContextHelper.getCurrentTenantId();
-        JobResponse job = jobService.getJob(tenantId, id);
-        return ResponseEntity.ok(ApiResponse.of(job));
-    }
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<JobResponse>> createJob(
-            @Valid @RequestBody CreateJobRequest request) {
-        UUID tenantId = SecurityContextHelper.getCurrentTenantId();
-        JobResponse job = jobService.createJob(tenantId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(job));
-    }
+// Always wrap errors with context
+if err != nil {
+    return fmt.Errorf("create service %s: %w", name, err)
 }
 ```
-
-### Repository Layer
-```java
-public interface JobRepository extends JpaRepository<Job, UUID> {
-    Optional<Job> findByTenantIdAndId(UUID tenantId, UUID id);
-
-    Page<Job> findByTenantIdAndStatus(UUID tenantId, JobStatus status, Pageable pageable);
-
-    @Query("""
-        SELECT j FROM Job j
-        WHERE j.tenantId = :tenantId
-        AND j.scheduledDate BETWEEN :start AND :end
-        ORDER BY j.scheduledDate ASC
-        """)
-    List<Job> findScheduledJobs(
-        @Param("tenantId") UUID tenantId,
-        @Param("start") LocalDateTime start,
-        @Param("end") LocalDateTime end
-    );
-}
-```
-
-### Entity Pattern
-```java
-@Entity
-@Table(name = "jobs", schema = "core")
-@Getter @Setter
-@NoArgsConstructor
-public class Job {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    @Column(name = "tenant_id", nullable = false)
-    private UUID tenantId;
-
-    @Column(nullable = false)
-    private String title;
-
-    @Column(length = 2000)
-    private String description;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private JobStatus status;
-
-    @Column(name = "scheduled_date")
-    private LocalDateTime scheduledDate;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}
-```
-
-### MapStruct Mapper
-```java
-@Mapper(componentModel = "spring")
-public interface JobMapper {
-    JobResponse toResponse(Job job);
-    Job toEntity(CreateJobRequest request);
-
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateEntity(UpdateJobRequest request, @MappingTarget Job job);
-}
-```
-
-### Flyway Migrations
-```
-backend/{service}/src/main/resources/db/migration/
-  V1__create_initial_schema.sql
-  V2__add_indexes.sql
-  V3__add_audit_fields.sql
-```
-
-Naming: `V{version}__{description}.sql` (double underscore)
 
 ---
 
@@ -402,40 +203,30 @@ Naming: `V{version}__{description}.sql` (double underscore)
 
 ### TanStack Query Hooks
 ```typescript
-// hooks/useJobs.ts
+// hooks/useServices.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { jobsApi } from '@cobalt/api-client';
+import { servicesApi } from '../api';
 
-export const jobKeys = {
-  all: ['jobs'] as const,
-  lists: () => [...jobKeys.all, 'list'] as const,
-  list: (filters: JobFilters) => [...jobKeys.lists(), filters] as const,
-  details: () => [...jobKeys.all, 'detail'] as const,
-  detail: (id: string) => [...jobKeys.details(), id] as const,
+export const serviceKeys = {
+  all: ['services'] as const,
+  lists: () => [...serviceKeys.all, 'list'] as const,
+  list: (filters: ServiceFilters) => [...serviceKeys.lists(), filters] as const,
+  details: () => [...serviceKeys.all, 'detail'] as const,
+  detail: (id: string) => [...serviceKeys.details(), id] as const,
 };
 
-export function useJobs(filters: JobFilters) {
+export function useServices(filters: ServiceFilters) {
   return useQuery({
-    queryKey: jobKeys.list(filters),
-    queryFn: () => jobsApi.getJobs(filters),
+    queryKey: serviceKeys.list(filters),
+    queryFn: () => servicesApi.getServices(filters),
   });
 }
 
-export function useJob(id: string) {
+export function useService(id: string) {
   return useQuery({
-    queryKey: jobKeys.detail(id),
-    queryFn: () => jobsApi.getJob(id),
+    queryKey: serviceKeys.detail(id),
+    queryFn: () => servicesApi.getService(id),
     enabled: !!id,
-  });
-}
-
-export function useCreateJob() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: jobsApi.createJob,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: jobKeys.lists() });
-    },
   });
 }
 ```
@@ -446,61 +237,37 @@ export function useCreateJob() {
 import { create } from 'zustand';
 
 interface AppState {
-  sidebarOpen: boolean;
-  selectedDate: Date | null;
+  sidebarCollapsed: boolean;
+  activeSessionId: string | null;
   toggleSidebar: () => void;
-  setSelectedDate: (date: Date | null) => void;
+  setActiveSessionId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  sidebarOpen: true,
-  selectedDate: null,
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setSelectedDate: (date) => set({ selectedDate: date }),
+  sidebarCollapsed: false,
+  activeSessionId: null,
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setActiveSessionId: (id) => set({ activeSessionId: id }),
 }));
-```
-
-### API Client
-```typescript
-// packages/api-client/src/jobs.ts
-import { apiClient } from './client';
-import type { Job, CreateJobRequest, PaginatedResponse } from './types';
-
-export const jobsApi = {
-  getJobs: (filters: JobFilters): Promise<PaginatedResponse<Job>> =>
-    apiClient.get('/api/v1/jobs', { params: filters }),
-
-  getJob: (id: string): Promise<Job> =>
-    apiClient.get(`/api/v1/jobs/${id}`),
-
-  createJob: (data: CreateJobRequest): Promise<Job> =>
-    apiClient.post('/api/v1/jobs', data),
-
-  updateJob: (id: string, data: UpdateJobRequest): Promise<Job> =>
-    apiClient.put(`/api/v1/jobs/${id}`, data),
-
-  deleteJob: (id: string): Promise<void> =>
-    apiClient.delete(`/api/v1/jobs/${id}`),
-};
 ```
 
 ### Component Pattern
 ```typescript
-// components/JobCard.tsx
+// components/ServiceCard.tsx
 import { Card, Tag, Text } from '@blueprintjs/core';
-import type { Job } from '@cobalt/api-client';
+import type { Service } from '../types';
 
-interface JobCardProps {
-  job: Job;
+interface ServiceCardProps {
+  service: Service;
   onSelect: (id: string) => void;
 }
 
-export function JobCard({ job, onSelect }: JobCardProps) {
+export function ServiceCard({ service, onSelect }: ServiceCardProps) {
   return (
-    <Card interactive onClick={() => onSelect(job.id)}>
-      <Text tagName="h4">{job.title}</Text>
-      <Tag intent={statusIntent(job.status)}>{job.status}</Tag>
-      <Text>{job.customerName}</Text>
+    <Card interactive onClick={() => onSelect(service.id)}>
+      <Text tagName="h4">{service.displayName}</Text>
+      <Tag intent={tierIntent(service.tier)}>{service.tier}</Tag>
+      <Text>{service.team}</Text>
     </Card>
   );
 }
@@ -515,83 +282,83 @@ export function JobCard({ job, onSelect }: JobCardProps) {
 **NEVER use mocking libraries.** This is enforced by:
 1. Pre-commit hooks that scan for mock imports
 2. ESLint rules that flag mock usage
-3. Gradle tasks that fail builds on mock detection
+3. golangci-lint custom rules
 4. CI/CD pipeline checks
 
 #### What is banned:
-- `Mockito`, `@Mock`, `@MockBean`, `@SpyBean`, `mock()`, `when()`, `verify()`
+
+**Go:**
+- `gomock`, `mockgen`, `testify/mock`
+- Any `*Mock*` struct patterns for interfaces
+- `monkey` patching libraries
+
+**TypeScript/JavaScript:**
 - `jest.mock()`, `jest.spyOn()`, `vi.mock()`, `vi.spyOn()`
+- `jest.fn()`, `vi.fn()`
 - Any mocking library or framework
 
 #### What to use instead:
 | Instead of | Use |
 |---|---|
-| `@MockBean DataSource` | TestContainers PostgreSQL |
-| `@MockBean MailSender` | GreenMail test server |
-| `@MockBean RedisTemplate` | TestContainers Redis |
+| `mock database` | testcontainers-go PostgreSQL |
+| `mock redis` | testcontainers-go Redis |
+| `mock HTTP client` | httptest.Server or WireMock |
 | `jest.mock(fetch)` | MSW (Mock Service Worker) for API boundaries only |
-| `@MockBean ExternalApi` | WireMock for HTTP contract testing |
 
-### Backend Testing
-```java
-@SpringBootTest
-@Testcontainers
-class JobServiceIntegrationTest {
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
+### Go Testing
+```go
+func TestCatalogService_GetService(t *testing.T) {
+    // Use testcontainers for real database
+    ctx := context.Background()
+    postgres, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+        ContainerRequest: testcontainers.ContainerRequest{
+            Image:        "postgres:15-alpine",
+            ExposedPorts: []string{"5432/tcp"},
+            Env: map[string]string{
+                "POSTGRES_DB":       "test",
+                "POSTGRES_USER":     "test",
+                "POSTGRES_PASSWORD": "test",
+            },
+            WaitingFor: wait.ForListeningPort("5432/tcp"),
+        },
+        Started: true,
+    })
+    require.NoError(t, err)
+    defer postgres.Terminate(ctx)
 
-    @Test
-    void createJob_withValidData_createsAndReturnsJob() {
-        // Given: real database, real service, real mapper
-        CreateJobRequest request = new CreateJobRequest(
-            "HVAC Repair", "Replace compressor unit", LocalDateTime.now().plusDays(1)
-        );
+    // Run actual test with real database
+    db := connectToContainer(t, postgres)
+    svc := NewCatalogService(db, nil, slog.Default())
 
-        // When
-        JobResponse response = jobService.createJob(tenantId, request);
+    // Test real behavior
+    created, err := svc.CreateService(ctx, &models.Service{Name: "test-svc"})
+    require.NoError(t, err)
 
-        // Then
-        assertThat(response.title()).isEqualTo("HVAC Repair");
-        assertThat(jobRepository.findByTenantIdAndId(tenantId, response.id())).isPresent();
-    }
+    fetched, err := svc.GetService(ctx, created.ID)
+    require.NoError(t, err)
+    assert.Equal(t, "test-svc", fetched.Name)
 }
 ```
 
 ### Frontend Unit Testing (Vitest)
 ```typescript
-// __tests__/JobCard.test.tsx
+// __tests__/ServiceCard.test.tsx
 import { render, screen } from '@testing-library/react';
-import { JobCard } from '../JobCard';
+import { ServiceCard } from '../ServiceCard';
 
-describe('JobCard', () => {
-  it('renders job title and status', () => {
-    const job = {
+describe('ServiceCard', () => {
+  it('renders service name and tier', () => {
+    const service = {
       id: '1',
-      title: 'HVAC Repair',
-      status: 'SCHEDULED',
-      customerName: 'John Smith',
+      displayName: 'Payment Service',
+      tier: 'critical',
+      team: 'payments',
     };
 
-    render(<JobCard job={job} onSelect={() => {}} />);
+    render(<ServiceCard service={service} onSelect={() => {}} />);
 
-    expect(screen.getByText('HVAC Repair')).toBeInTheDocument();
-    expect(screen.getByText('SCHEDULED')).toBeInTheDocument();
-  });
-});
-```
-
-### Frontend E2E Testing (Playwright)
-```typescript
-// e2e/jobs.spec.ts
-import { test, expect } from '@playwright/test';
-
-test.describe('Job Management', () => {
-  test('should create a new job', async ({ page }) => {
-    await page.goto('/jobs/new');
-    await page.fill('[name="title"]', 'Boiler Inspection');
-    await page.fill('[name="description"]', 'Annual boiler inspection');
-    await page.click('button[type="submit"]');
-    await expect(page.getByText('Boiler Inspection')).toBeVisible();
+    expect(screen.getByText('Payment Service')).toBeInTheDocument();
+    expect(screen.getByText('critical')).toBeInTheDocument();
   });
 });
 ```
@@ -599,8 +366,8 @@ test.describe('Job Management', () => {
 ### Coverage Requirements
 | Scope | Minimum |
 |---|---|
-| Overall (backend) | 80% |
-| Service layer | 95% |
+| Go overall | 80% |
+| Go service layer | 90% |
 | Frontend components | 80% |
 | E2E critical paths | 100% of happy paths |
 
@@ -608,88 +375,45 @@ test.describe('Job Management', () => {
 
 ## File Organization
 
-### Backend
+### Solomon
 ```
-backend/
-  settings.gradle.kts
-  build.gradle.kts
-  platform-common/
-    build.gradle.kts
-    src/main/java/com/cobalt/common/
-      config/          — shared Spring configs
-      dto/             — shared DTOs (ApiResponse, PagedResponse)
-      entity/          — base entities (BaseAuditEntity)
-      exception/       — global exception handling
-      security/        — JWT, SecurityContextHelper
-  core-service/
-    build.gradle.kts
-    src/main/java/com/cobalt/core/
-      config/          — service-specific config
-      controller/      — REST controllers
-      dto/             — request/response DTOs
-      entity/          — JPA entities
-      mapper/          — MapStruct mappers
-      repository/      — Spring Data repositories
-      service/         — business logic
-      event/           — domain events
-    src/main/resources/
-      application.yml
-      db/migration/    — Flyway migrations
-    src/test/java/com/cobalt/core/
-      integration/     — TestContainers integration tests
-      controller/      — WebMvcTest controller tests
-  notification-service/
-    build.gradle.kts
-    src/main/java/com/cobalt/notification/
-      (same structure as core-service)
-  violations-service/
-    build.gradle.kts
-    src/main/java/com/cobalt/violations/
-      (same structure + sync/ for Socrata sync logic)
-  config/
-    checkstyle/
-      checkstyle.xml
-  init-db.sql
-```
-
-### Frontend
-```
-frontend/
-  package.json         — root workspace config
-  pnpm-workspace.yaml
-  turbo.json
-  eslint.config.js
-  .prettierrc
-  playwright.config.ts
-  .env.example
-  apps/
-    web/
-      package.json
-      vite.config.ts
-      index.html
-      src/
-        main.tsx
-        App.tsx
-        components/    — shared UI components
-        features/      — feature modules
-          jobs/        — job management
-          schedule/    — calendar/scheduling
-          customers/   — CRM
-          invoices/    — invoicing
-          violations/  — DOB violations viewer
-        hooks/         — TanStack Query hooks
-        stores/        — Zustand stores
-        layouts/       — page layouts
-        routes/        — route definitions
-        utils/         — utility functions
-      e2e/             — Playwright tests
-  packages/
-    ui/
-      package.json
-      src/             — shared Blueprint.js components
-    api-client/
-      package.json
-      src/             — typed API client
+solomon/
+├── cmd/solomon/
+│   └── main.go              # Entrypoint
+├── internal/
+│   ├── api/
+│   │   ├── server.go        # Router setup
+│   │   ├── handlers/        # HTTP handlers
+│   │   └── middleware/      # Auth, logging, CORS
+│   ├── config/
+│   │   └── config.go        # Configuration with Viper
+│   ├── models/
+│   │   └── models.go        # Data models
+│   └── services/
+│       ├── catalog/         # Service catalog
+│       ├── deploy/          # Deployment management
+│       ├── incidents/       # Incident management
+│       ├── costs/           # Cost tracking
+│       ├── secrets/         # Secrets management
+│       └── ai/              # AI session management
+├── pkg/
+│   ├── k8s/                 # Kubernetes client utilities
+│   └── claude/              # Claude API client
+├── migrations/              # golang-migrate SQL files
+├── web/                     # React frontend
+│   ├── src/
+│   │   ├── api/             # API client
+│   │   ├── components/      # Shared components
+│   │   ├── pages/           # Page components
+│   │   ├── hooks/           # TanStack Query hooks
+│   │   ├── stores/          # Zustand stores
+│   │   └── types/           # TypeScript types
+│   └── package.json
+├── Dockerfile
+├── docker-compose.yml
+├── config.yaml
+├── Makefile
+└── README.md
 ```
 
 ---
@@ -697,25 +421,20 @@ frontend/
 ## Review Criteria
 
 ### Every PR must:
-1. Have tenant_id on all new tables and queries
-2. Include migration scripts (no manual DDL)
-3. Have integration tests using TestContainers (no mocks)
-4. Follow REST conventions with proper status codes
-5. Use MapStruct for all object mapping
-6. Handle errors with RFC 7807 responses
-7. Include frontend tests (unit + E2E for new flows)
-8. Pass Checkstyle, ESLint, and TypeScript strict checks
-9. Meet coverage thresholds (80% overall, 95% service)
-10. Not introduce any mock imports or spy patterns
+1. Include database migration scripts (no manual DDL)
+2. Have integration tests using testcontainers (no mocks)
+3. Follow REST conventions with proper status codes
+4. Handle errors with RFC 7807 responses
+5. Include frontend tests (unit + E2E for new flows)
+6. Pass golangci-lint, ESLint, and TypeScript strict checks
+7. Meet coverage thresholds (80% overall, 90% service layer)
+8. Not introduce any mock imports or spy patterns
 
 ### Implementation Checklist (for every feature)
 - [ ] Database migration created
-- [ ] Entity with tenant_id and audit fields
-- [ ] Repository with tenant-scoped queries
-- [ ] Service with business logic
-- [ ] MapStruct mapper
-- [ ] REST controller with proper status codes
-- [ ] Integration tests (TestContainers)
+- [ ] Go service with error handling
+- [ ] HTTP handler with proper status codes
+- [ ] Integration tests (testcontainers)
 - [ ] API client function
 - [ ] TanStack Query hook
 - [ ] React component
@@ -724,74 +443,60 @@ frontend/
 
 ---
 
-## Domain Entities Reference
+## Solomon Domain Entities
 
-### Core Service
-- `Tenant` — business (company name, address, subscription)
-- `User` — team member (name, email, role, tenant_id)
-- `Customer` — client/property owner (name, phone, email, addresses)
-- `Job` — service job (title, description, status, scheduled_date, assigned_to)
-- `JobStatus` — enum: DRAFT, SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
-- `Estimate` — price estimate (line items, labor, materials, tax)
-- `Invoice` — billing document (line items, payment status, due date)
-- `Payment` — payment record (amount, method, stripe_payment_id)
-- `ServiceAddress` — job location (address, access notes, property type)
-- `Equipment` — tracked equipment at location (make, model, serial, install date)
-- `Part` — parts catalog entry (number, description, category, price)
-- `PartCategory` — enum: COMPRESSOR, CONDENSER, EVAPORATOR, THERMOSTAT, VALVE, PIPE_FITTING, PUMP, BOILER_PART, FILTER, DUCTWORK, OTHER
-- `Attachment` — file upload (S3 key, filename, content type)
+### Service Catalog
+- `Service` — registered service (name, repository, team, tier, language, framework)
+- `Environment` — deployment target (name, cluster, namespace, config)
+- `Dependency` — service dependency (type: runtime, build, optional)
+- `Runbook` — operational runbook (title, trigger, content, AI prompt)
 
-### Notification Service
-- `NotificationTemplate` — template (type, subject, body, variables)
-- `NotificationLog` — sent notification (recipient, channel, status, sent_at)
-- `NotificationPreference` — user preference (channel, frequency, opt-out)
+### Deployments
+- `Deployment` — deployment record (service, environment, image tag, status, initiator)
+- `DeploymentStatus` — enum: pending, in_progress, succeeded, failed, rolled_back
 
-### Violations Service
-- `DobViolation` — synced violation record (all Socrata fields)
-- `ViolationSync` — sync metadata (last_sync, records_processed, status)
-- `ViolationWatch` — user-configured watch (BIN, address, or area filter)
-- `ViolationAlert` — alert generated for watched violations
+### Incidents
+- `Incident` — incident record (title, severity, status, affected services)
+- `IncidentTimeline` — timeline event (type, actor, content)
+- `IncidentSeverity` — enum: critical, high, medium, low
+- `IncidentStatus` — enum: triggered, acknowledged, investigating, identified, monitoring, resolved
+
+### AI Sessions
+- `AISession` — AI console session (user, context, status, model)
+- `AIAction` — tool execution record (tool, input, output, approval status)
+- `AIActionStatus` — enum: pending, approved, rejected, executed, failed
+
+### Cost Tracking
+- `CostRecord` — daily cost record (date, environment, service, resource, cost)
+
+### Audit
+- `AuditLog` — immutable audit entry (actor, action, resource, details)
 
 ---
 
 ## Environment Variables
 
-### Backend (per service)
+### Solomon Backend
 ```
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/cobalt
-SPRING_DATASOURCE_USERNAME=cobalt
-SPRING_DATASOURCE_PASSWORD=cobalt_dev
-SPRING_REDIS_HOST=localhost
-SPRING_REDIS_PORT=6379
-JWT_SECRET=<base64-encoded-secret>
-JWT_EXPIRATION=3600000
-JWT_REFRESH_EXPIRATION=86400000
-```
-
-### Core Service Specific
-```
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-TWILIO_ACCOUNT_SID=AC...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=+1...
-AWS_S3_BUCKET=cobalt-uploads
+SOLOMON_SERVER_PORT=8080
+SOLOMON_DATABASE_HOST=localhost
+SOLOMON_DATABASE_PORT=5432
+SOLOMON_DATABASE_USER=solomon
+SOLOMON_DATABASE_PASSWORD=solomon_dev
+SOLOMON_DATABASE_DATABASE=solomon
+SOLOMON_REDIS_HOST=localhost
+SOLOMON_REDIS_PORT=6379
+SOLOMON_AUTH_JWT_SECRET=<base64-encoded-secret>
+SOLOMON_AUTH_OIDC_ISSUER=https://auth.example.com
+SOLOMON_ANTHROPIC_API_KEY=<api-key>
+SOLOMON_ARGOCD_SERVER_URL=https://argocd.example.com
+SOLOMON_PAGERDUTY_API_KEY=<api-key>
+SOLOMON_AWS_REGION=us-east-1
 ```
 
-### Violations Service Specific
-```
-SOCRATA_APP_TOKEN=<app-token>
-SOCRATA_BASE_URL=https://data.cityofnewyork.us
-SOCRATA_DATASET_ID=3h2n-5cm9
-SYNC_CRON=0 0 2 * * *
-```
-
-### Frontend
+### Solomon Frontend
 ```
 VITE_API_BASE_URL=http://localhost:8080
-VITE_VIOLATIONS_API_URL=http://localhost:8082
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
-VITE_WS_URL=ws://localhost:8080/ws
 ```
 
 ---
@@ -807,94 +512,18 @@ hotfix/{ticket}-{short-description}
 
 ### Commit Messages
 ```
-feat(core): add job scheduling endpoint
-fix(violations): handle null disposition dates in sync
-refactor(web): extract JobCard component
-test(core): add integration tests for invoice service
+feat(solomon): add service catalog endpoint
+fix(solomon): handle nil pointer in deployment status
+refactor(solomon): extract AI tool registry
+test(solomon): add integration tests for incidents
 docs: update API documentation
-chore: upgrade Spring Boot to 3.4.1
+chore: upgrade Go to 1.22
 ```
 
 ### PR Title Format
 ```
-[COBALT-123] feat(core): add job scheduling endpoint
+feat(solomon): add service catalog endpoint
 ```
-
----
-
-## Demo Environment
-
-### Credentials
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@demo.com | password123 |
-| Manager | manager@demo.com | password123 |
-| Technician | tech@demo.com | password123 |
-
-### Quick Start
-```bash
-# Start all services
-docker compose up
-
-# Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@demo.com","password":"password123"}'
-```
-
-### Reset Demo Data
-Demo data is seeded automatically on first boot by `DemoDataSeeder`. To reset:
-```bash
-docker compose down -v  # removes volumes
-docker compose up       # fresh start with new seed data
-```
-
----
-
-## Terraform Deployment
-
-### Prerequisites
-- AWS CLI configured with appropriate credentials
-- Terraform >= 1.5.0
-- kubectl configured
-
-### Deploy to Dev
-```bash
-cd infrastructure/terraform/environments/dev
-terraform init
-terraform plan -var="db_password=<secure-password>"
-terraform apply -var="db_password=<secure-password>"
-```
-
-### Deploy to Prod
-```bash
-cd infrastructure/terraform/environments/prod
-terraform init
-terraform plan -var="db_password=<secure-password>"
-terraform apply -var="db_password=<secure-password>"
-```
-
-### Post-Deploy
-1. Update kubeconfig: `aws eks update-kubeconfig --name cobalt-<env> --region us-east-1`
-2. Apply K8s manifests: `kubectl apply -f infrastructure/terraform/k8s/`
-3. Verify: `kubectl get pods -n cobalt-services`
-
----
-
-## RBAC Roles and Permissions
-
-| Feature | ADMIN | MANAGER | TECHNICIAN |
-|---|---|---|---|
-| View Dashboard | Yes | Yes | Yes |
-| Manage Jobs | Full CRUD | Full CRUD | View + Update assigned |
-| Manage Customers | Full CRUD | Full CRUD | View only |
-| Manage Estimates | Full CRUD | Full CRUD | View only |
-| Manage Invoices | Full CRUD | Full CRUD | No access |
-| View Revenue | Yes | Yes | No |
-| Manage Users | Full CRUD | View only | No access |
-| Manage Settings | Full access | View only | No access |
-| View Violations | Yes | Yes | Yes |
-| Manage Watches | Full CRUD | Full CRUD | Own only |
 
 ---
 
@@ -904,34 +533,45 @@ terraform apply -var="db_password=<secure-password>"
 
 | Tool | Scope | Threshold | Suppressions |
 |---|---|---|---|
-| Trivy (fs) | Backend/frontend deps | CRITICAL,HIGH | `.trivyignore` |
+| Trivy (fs) | Go deps, frontend deps | CRITICAL,HIGH | `.trivyignore` |
 | Trivy (image) | Docker images | CRITICAL,HIGH | `.trivyignore` |
-| OWASP Dependency-Check | Java CVEs | CVSS >= 7.0 | `backend/config/owasp-suppressions.xml` |
-| Checkov | Terraform IaC | Default rules | Inline `#checkov:skip` |
+| gosec | Go security scan | High severity | Inline comments |
 | TruffleHog | Secrets in git history | Verified only | N/A |
-| TFLint | Terraform (AWS ruleset) | All rules | `.tflint.hcl` |
-| Terraform test | Module plan assertions | All pass | N/A |
+| Checkov | Terraform IaC | Default rules | Inline `#checkov:skip` |
 
 ### Local Commands
 ```bash
-# OWASP scan
-cd backend && ./gradlew dependencyCheckAggregate
+# Go security scan
+cd solomon && golangci-lint run --enable gosec ./...
 
 # Trivy filesystem scan
-trivy fs --severity CRITICAL,HIGH ./backend
-
-# Checkov IaC scan
-checkov -d infrastructure/terraform
+trivy fs --severity CRITICAL,HIGH ./solomon
 
 # TruffleHog secret scan
 trufflehog git file://. --only-verified
 
 # Terraform format check
 cd infrastructure/terraform && terraform fmt -check -recursive
-
-# Terraform validate
-cd infrastructure/terraform/environments/dev && terraform init -backend=false && terraform validate
-
-# Terraform module tests
-cd infrastructure/terraform/modules/networking && terraform init -backend=false && terraform test
 ```
+
+---
+
+## Quick Start
+
+```bash
+# Start infrastructure
+cd solomon
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run migrations
+DATABASE_URL="postgres://solomon:solomon_dev@localhost:5434/solomon?sslmode=disable" make migrate-up
+
+# Start backend
+make run
+
+# In another terminal, start frontend
+make web-install
+make web-dev
+```
+
+The API will be at `http://localhost:8080` and web UI at `http://localhost:3000`.
