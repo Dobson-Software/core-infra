@@ -4,7 +4,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7" apply false
     checkstyle
     jacoco
-    id("org.owasp.dependencycheck") version "9.0.9"
+    id("org.owasp.dependencycheck") version "12.2.0"
 }
 
 val javaVersion = JavaVersion.toVersion(21)
