@@ -32,6 +32,48 @@ spec:
                 name: violations-service
                 port:
                   number: 8082
+          - path: /api/v1/property-owners
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/building-permits
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/letter-templates
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/generated-letters
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/watches
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
+          - path: /api/v1/admin/sync-runs
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
           - path: /api/v1/notifications
             pathType: Prefix
             backend:
