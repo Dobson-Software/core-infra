@@ -101,7 +101,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build core-service image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile.core
@@ -121,7 +121,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Build notification-service image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile.notification
@@ -141,7 +141,7 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Build violations-service image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile.violations
