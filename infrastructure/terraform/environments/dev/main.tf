@@ -5,6 +5,14 @@
 terraform {
   required_version = ">= 1.5.0"
 
+  backend "s3" {
+    bucket         = "cobalt-terraform-state"
+    key            = "environments/dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "cobalt-terraform-locks"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -194,7 +202,7 @@ module "cache" {
   subnet_ids              = module.networking.private_subnet_ids
   allowed_security_groups = [module.eks.cluster_security_group_id]
   kms_key_id              = module.security_base.kms_elasticache_key_arn
-  enable_cache            = false
+  enable_cache            = true
 }
 
 ################################################################################

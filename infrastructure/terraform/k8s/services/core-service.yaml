@@ -97,6 +97,23 @@ spec:
                 secretKeyRef:
                   name: cobalt-jwt-secret
                   key: secret
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: cors-allowed-origins
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://notification-service:8081"
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-stripe-keys
+                  key: secret-key
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-stripe-keys
+                  key: webhook-secret
           volumeMounts:
             - name: tmp
               mountPath: /tmp

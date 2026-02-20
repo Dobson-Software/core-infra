@@ -12,3 +12,4 @@ data:
   db-host: "${DB_HOST}"
   db-port: "5432"
   db-name: "cobalt"
+  cors-allowed-origins: "${CORS_ALLOWED_ORIGINS}"

@@ -97,6 +97,26 @@ spec:
                 secretKeyRef:
                   name: cobalt-jwt-secret
                   key: secret
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: cors-allowed-origins
+            - name: TWILIO_ACCOUNT_SID
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-twilio-credentials
+                  key: account-sid
+            - name: TWILIO_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-twilio-credentials
+                  key: auth-token
+            - name: TWILIO_PHONE_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-twilio-credentials
+                  key: phone-number
           volumeMounts:
             - name: tmp
               mountPath: /tmp

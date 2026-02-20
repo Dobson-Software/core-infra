@@ -5,6 +5,14 @@
 terraform {
   required_version = ">= 1.5.0"
 
+  backend "s3" {
+    bucket         = "cobalt-terraform-state"
+    key            = "environments/prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "cobalt-terraform-locks"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -156,10 +164,10 @@ module "eks" {
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
   node_instance_types       = ["t4g.medium"]
-  capacity_type             = "SPOT"
-  node_min_size             = 1
+  capacity_type             = "ON_DEMAND"
+  node_min_size             = 2
   node_max_size             = 3
-  node_desired_size         = 1
+  node_desired_size         = 2
 }
 
 ################################################################################
@@ -175,7 +183,7 @@ module "database" {
   allowed_security_groups = [module.eks.cluster_security_group_id]
   db_password             = var.db_password
   kms_key_arn             = module.security_base.kms_rds_key_arn
-  enable_multi_az         = false
+  enable_multi_az         = true
   enable_read_replica     = false
 
   providers = {
@@ -196,7 +204,7 @@ module "cache" {
   subnet_ids              = module.networking.private_subnet_ids
   allowed_security_groups = [module.eks.cluster_security_group_id]
   kms_key_id              = module.security_base.kms_elasticache_key_arn
-  enable_cache            = false
+  enable_cache            = true
 }
 
 ################################################################################

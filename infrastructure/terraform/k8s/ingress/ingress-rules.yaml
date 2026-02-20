@@ -23,7 +23,8 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - http:
+    - host: "${DOMAIN}"
+      http:
         paths:
           - path: /api/v1/violations
             pathType: Prefix
@@ -81,6 +82,27 @@ spec:
                 name: notification-service
                 port:
                   number: 8081
+          - path: /api/v1/templates
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8081
+          - path: /api/v1/preferences
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8081
+          - path: /api/v1/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: violations-service
+                port:
+                  number: 8082
           - path: /api
             pathType: Prefix
             backend:
