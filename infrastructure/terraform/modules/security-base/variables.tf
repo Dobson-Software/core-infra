@@ -26,3 +26,9 @@ variable "enable_cmk_keys" {
   type        = bool
   default     = true
 }
+
+variable "enable_secret_rotation" {
+  description = "Enable automatic secret rotation (requires a rotation Lambda to be deployed separately)"
+  type        = bool
+  default     = false
+}

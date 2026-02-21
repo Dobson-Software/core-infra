@@ -394,6 +394,8 @@ resource "aws_secretsmanager_secret" "db_password" {
 }
 
 resource "aws_secretsmanager_secret_rotation" "db_password" {
+  count = var.enable_secret_rotation ? 1 : 0
+
   secret_id           = aws_secretsmanager_secret.db_password.id
   rotation_lambda_arn = "arn:aws:lambda:${data.aws_region.current.name}:${local.account_id}:function:cobalt-${var.environment}-secret-rotation"
 
