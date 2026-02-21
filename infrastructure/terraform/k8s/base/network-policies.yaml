@@ -33,7 +33,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: 10.1.0.0/16
+            cidr: ${VPC_CIDR}
       ports:
         - protocol: TCP
           port: 8080
@@ -72,7 +72,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: 10.1.0.0/16
+            cidr: ${VPC_CIDR}
       ports:
         - protocol: TCP
           port: 8081
@@ -117,7 +117,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: 10.1.0.0/16
+            cidr: ${VPC_CIDR}
       ports:
         - protocol: TCP
           port: 8082
@@ -160,7 +160,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: 10.1.0.0/16
+            cidr: ${VPC_CIDR}
       ports:
         - protocol: TCP
           port: 8080
