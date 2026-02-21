@@ -11,14 +11,14 @@ metadata:
     # Substituted via envsubst during deployment
     alb.ingress.kubernetes.io/certificate-arn: ${ACM_CERTIFICATE_ARN}
     alb.ingress.kubernetes.io/group.name: cobalt
-    # Per-service health checks (backend services use /actuator/health, frontend uses /)
+    # Per-service health checks (backend services use /api/actuator/health, frontend uses /)
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/actions.core-service: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"core-service","servicePort":"8080"}]}}'
     alb.ingress.kubernetes.io/conditions.core-service: '{"field":"path-pattern","pathPatternConfig":{"values":["/api/*"]}}'
     alb.ingress.kubernetes.io/target-group-attributes.core-service: "deregistration_delay.timeout_seconds=30"
-    alb.ingress.kubernetes.io/healthcheck-path.core-service: /actuator/health
-    alb.ingress.kubernetes.io/healthcheck-path.notification-service: /actuator/health
-    alb.ingress.kubernetes.io/healthcheck-path.violations-service: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.core-service: /api/actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.notification-service: /api/actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path.violations-service: /api/actuator/health
     alb.ingress.kubernetes.io/healthcheck-path.frontend: /
 spec:
   ingressClassName: alb
