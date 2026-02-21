@@ -20,3 +20,15 @@ variable "cloudfront_distribution_arn" {
   type        = string
   default     = ""
 }
+
+variable "project_name" {
+  description = "Project name used for WAF resource naming"
+  type        = string
+  default     = "cobalt"
+}
+
+variable "enable_waf" {
+  description = "Enable WAF v2 WebACL for ALB protection"
+  type        = bool
+  default     = false
+}

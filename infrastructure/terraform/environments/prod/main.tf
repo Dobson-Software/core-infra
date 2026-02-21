@@ -133,6 +133,7 @@ module "security_protection" {
   enable_shield_advanced      = false
   alb_arn                     = module.load_balancer.alb_arn
   cloudfront_distribution_arn = module.cdn.distribution_arn
+  enable_waf                  = true
 }
 
 ################################################################################
