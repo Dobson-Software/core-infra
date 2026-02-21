@@ -32,6 +32,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
+        - ipBlock:
+            cidr: 10.1.0.0/16
       ports:
         - protocol: TCP
           port: 8080
@@ -69,6 +71,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
+        - ipBlock:
+            cidr: 10.1.0.0/16
       ports:
         - protocol: TCP
           port: 8081
@@ -112,6 +116,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
+        - ipBlock:
+            cidr: 10.1.0.0/16
       ports:
         - protocol: TCP
           port: 8082
@@ -153,6 +159,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               app.kubernetes.io/name: cobalt-ingress
+        - ipBlock:
+            cidr: 10.1.0.0/16
       ports:
         - protocol: TCP
           port: 8080

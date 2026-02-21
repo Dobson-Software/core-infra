@@ -117,9 +117,9 @@ module "security_base" {
 
   environment      = var.environment
   alert_email      = var.alert_email
-  enable_guardduty = false
-  enable_config    = false
-  enable_cmk_keys  = false
+  enable_guardduty = true
+  enable_config    = true
+  enable_cmk_keys  = true
 }
 
 ################################################################################
@@ -147,7 +147,7 @@ module "networking" {
   aws_region               = var.aws_region
   enable_all_vpc_endpoints = false
   enable_ecr_vpc_endpoints = false
-  enable_flow_log          = false
+  enable_flow_log          = true
 }
 
 ################################################################################
@@ -163,11 +163,11 @@ module "eks" {
   cluster_name              = "cobalt-${var.environment}"
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
-  node_instance_types       = ["t4g.medium"]
+  node_instance_types       = ["t4g.large"]
   capacity_type             = "ON_DEMAND"
   node_min_size             = 2
-  node_max_size             = 3
-  node_desired_size         = 2
+  node_max_size             = 6
+  node_desired_size         = 3
 }
 
 ################################################################################
