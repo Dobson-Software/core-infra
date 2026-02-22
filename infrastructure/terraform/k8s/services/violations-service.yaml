@@ -92,6 +92,11 @@ spec:
                   key: redis-host
             - name: SPRING_REDIS_PORT
               value: "6379"
+            - name: SPRING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-redis-auth
+                  key: password
             - name: SOCRATA_APP_TOKEN
               valueFrom:
                 secretKeyRef:
