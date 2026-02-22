@@ -29,11 +29,8 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: ${VPC_CIDR}
+            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
       ports:
         - protocol: TCP
           port: 8080
@@ -68,11 +65,8 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: ${VPC_CIDR}
+            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
       ports:
         - protocol: TCP
           port: 8081
@@ -113,11 +107,8 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: ${VPC_CIDR}
+            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
       ports:
         - protocol: TCP
           port: 8082
@@ -156,11 +147,8 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              app.kubernetes.io/name: cobalt-ingress
         - ipBlock:
-            cidr: ${VPC_CIDR}
+            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
       ports:
         - protocol: TCP
           port: 8080
