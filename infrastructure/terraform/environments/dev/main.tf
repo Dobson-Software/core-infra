@@ -163,6 +163,7 @@ module "eks" {
   cluster_name              = "cobalt-${var.environment}"
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
+  allowed_api_cidrs         = ["10.0.0.0/8"]
   node_instance_types       = ["t4g.medium"]
   capacity_type             = "SPOT"
   node_min_size             = 1

@@ -28,7 +28,7 @@ variable "enable_cmk_keys" {
 }
 
 variable "enable_secret_rotation" {
-  description = "Enable automatic secret rotation (requires a rotation Lambda to be deployed separately)"
+  description = "Enable automatic secret rotation. PREREQUISITE: The rotation Lambda function (cobalt-<env>-secret-rotation) must be deployed before enabling this."
   type        = bool
   default     = false
 }

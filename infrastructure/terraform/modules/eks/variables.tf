@@ -24,9 +24,8 @@ variable "secrets_access_policy_arn" {
 }
 
 variable "allowed_api_cidrs" {
-  description = "CIDR blocks allowed to access the EKS API server"
+  description = "CIDR blocks allowed to access the EKS API server. Must be explicitly set."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
 
 variable "eks_kms_key_arn" {

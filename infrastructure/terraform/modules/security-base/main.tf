@@ -393,6 +393,12 @@ resource "aws_secretsmanager_secret" "db_password" {
   }
 }
 
+# IMPORTANT: The rotation Lambda function referenced below must be deployed separately
+# before enabling secret rotation. This resource only configures the rotation schedule
+# and association — it does NOT create the Lambda itself. Deploy the Lambda
+# (cobalt-<env>-secret-rotation) via the serverless module or manually before setting
+# enable_secret_rotation = true, otherwise Terraform apply will fail with a missing
+# function error.
 resource "aws_secretsmanager_secret_rotation" "db_password" {
   count = var.enable_secret_rotation ? 1 : 0
 

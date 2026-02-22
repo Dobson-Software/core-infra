@@ -18,7 +18,7 @@ data:
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com https://api.stripe.com; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none';" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
         # Gzip compression
@@ -48,6 +48,11 @@ metadata:
     app.kubernetes.io/part-of: cobalt
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: frontend

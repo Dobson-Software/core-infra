@@ -9,6 +9,11 @@ metadata:
     app.kubernetes.io/part-of: cobalt
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: core-service
@@ -36,6 +41,12 @@ spec:
         - name: wait-for-db
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z ${DB_HOST:-postgres} 5432; do echo waiting for db; sleep 2; done']
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: db-host
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -119,6 +130,10 @@ spec:
                 secretKeyRef:
                   name: cobalt-stripe-keys
                   key: webhook-secret
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           volumeMounts:
             - name: tmp
               mountPath: /tmp

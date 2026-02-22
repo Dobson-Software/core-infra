@@ -102,6 +102,8 @@ variable "alert_email" {
   type        = string
 }
 
+# WARNING: This value is stored in Terraform state. Consider migrating to
+# aws_rds_cluster.manage_master_user_password for Secrets Manager-managed rotation.
 variable "db_password" {
   description = "RDS master password"
   type        = string
@@ -170,6 +172,8 @@ module "eks" {
   cluster_name              = "cobalt-${var.environment}"
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
+  # TODO: Replace with actual office/VPN CIDRs for production
+  allowed_api_cidrs         = ["10.0.0.0/8"]
   node_instance_types       = ["t4g.large"]
   capacity_type             = "ON_DEMAND"
   node_min_size             = 2

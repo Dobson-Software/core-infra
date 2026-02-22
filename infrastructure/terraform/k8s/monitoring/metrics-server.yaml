@@ -145,6 +145,9 @@ spec:
             - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
             - --kubelet-use-node-status-port
             - --metric-resolution=15s
+            # Known EKS issue: kubelet uses self-signed certs that metrics-server can't verify.
+            # This is the recommended workaround per AWS documentation.
+            - --kubelet-insecure-tls
           ports:
             - name: https
               containerPort: 10250
