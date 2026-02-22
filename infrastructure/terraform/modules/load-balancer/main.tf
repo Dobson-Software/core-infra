@@ -102,7 +102,7 @@ resource "aws_lb_target_group" "core_service" {
   target_type = "ip"
 
   health_check {
-    path                = "/actuator/health"
+    path                = "/api/actuator/health"
     port                = "traffic-port"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -121,7 +121,7 @@ resource "aws_lb_target_group" "notification_service" {
   target_type = "ip"
 
   health_check {
-    path                = "/actuator/health"
+    path                = "/api/actuator/health"
     port                = "traffic-port"
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -140,7 +140,7 @@ resource "aws_lb_target_group" "violations_service" {
   target_type = "ip"
 
   health_check {
-    path                = "/actuator/health"
+    path                = "/api/actuator/health"
     port                = "traffic-port"
     healthy_threshold   = 2
     unhealthy_threshold = 3

@@ -68,6 +68,30 @@ resource "aws_elasticache_parameter_group" "cobalt" {
   }
 }
 
+################################################################################
+# Store Redis Auth Token in Secrets Manager
+################################################################################
+
+resource "aws_secretsmanager_secret" "redis_auth" {
+  count = var.enable_cache ? 1 : 0
+
+  name = "cobalt/${var.environment}/redis-auth"
+
+  tags = {
+    Environment = var.environment
+    Module      = "cache"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "redis_auth" {
+  count = var.enable_cache ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.redis_auth[0].id
+  secret_string = jsonencode({
+    password = random_password.redis_auth[0].result
+  })
+}
+
 resource "aws_elasticache_replication_group" "cobalt" {
   count = var.enable_cache ? 1 : 0
 

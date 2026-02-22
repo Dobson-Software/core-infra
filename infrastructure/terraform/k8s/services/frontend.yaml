@@ -92,6 +92,12 @@ spec:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
               readOnly: true
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8080
+            failureThreshold: 10
+            periodSeconds: 3
           livenessProbe:
             httpGet:
               path: /

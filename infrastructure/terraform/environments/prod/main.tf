@@ -108,6 +108,12 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "enable_secret_rotation" {
+  description = "Enable automatic secret rotation (requires a rotation Lambda to be deployed separately)"
+  type        = bool
+  default     = false
+}
+
 ################################################################################
 # Security Base (must come first — provides KMS keys, no ALB/CDN deps)
 ################################################################################
@@ -115,11 +121,12 @@ variable "db_password" {
 module "security_base" {
   source = "../../modules/security-base"
 
-  environment      = var.environment
-  alert_email      = var.alert_email
-  enable_guardduty = true
-  enable_config    = true
-  enable_cmk_keys  = true
+  environment            = var.environment
+  alert_email            = var.alert_email
+  enable_guardduty       = true
+  enable_config          = true
+  enable_cmk_keys        = true
+  enable_secret_rotation = var.enable_secret_rotation
 }
 
 ################################################################################
@@ -133,7 +140,6 @@ module "security_protection" {
   enable_shield_advanced      = false
   alb_arn                     = module.load_balancer.alb_arn
   cloudfront_distribution_arn = module.cdn.distribution_arn
-  enable_waf                  = false  # WAF is managed by the load-balancer module
 }
 
 ################################################################################
