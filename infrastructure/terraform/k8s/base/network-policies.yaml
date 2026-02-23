@@ -28,6 +28,7 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
         - ipBlock:
             cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
@@ -76,6 +77,7 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
         - ipBlock:
             cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
@@ -118,6 +120,7 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
         - ipBlock:
             cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
@@ -158,6 +161,7 @@ spec:
     - Ingress
     - Egress
   ingress:
+    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
         - ipBlock:
             cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC

@@ -114,7 +114,8 @@ resource "aws_db_instance" "primary" {
 
   db_name  = "cobalt"
   username = "cobalt"
-  password = var.db_password
+  manage_master_user_password = true
+  master_user_secret_kms_key_id = var.kms_key_arn
 
   multi_az               = var.enable_multi_az != null ? var.enable_multi_az : (var.environment == "prod")
   db_subnet_group_name   = aws_db_subnet_group.cobalt.name

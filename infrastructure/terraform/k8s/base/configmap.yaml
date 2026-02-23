@@ -13,3 +13,17 @@ data:
   db-port: "5432"
   db-name: "cobalt"
   cors-allowed-origins: "${CORS_ALLOWED_ORIGINS}"
+  cluster-name: "${CLUSTER_NAME}"
+  # Stripe price IDs (public identifiers, not secrets)
+  stripe-price-starter: "${STRIPE_PRICE_STARTER}"
+  stripe-price-professional: "${STRIPE_PRICE_PROFESSIONAL}"
+  stripe-price-enterprise: "${STRIPE_PRICE_ENTERPRISE}"
+  # Mail configuration
+  MAIL_HOST: "${MAIL_HOST}"
+  MAIL_PORT: "${MAIL_PORT}"
+  # Frontend / Auth / Observability
+  frontend-url: "https://${DOMAIN}"
+  google-client-id: "${GOOGLE_CLIENT_ID}"
+  otel-endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
+  # Environment identifier
+  environment: "${ENVIRONMENT}"

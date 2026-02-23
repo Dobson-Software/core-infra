@@ -98,6 +98,8 @@ resource "aws_elasticache_replication_group" "cobalt" {
   replication_group_id = "cobalt-${var.environment}"
   description          = "Cobalt Redis cluster - ${var.environment}"
 
+  # Valkey 7.2 is a Redis-compatible fork. Spring Boot 3.4.x with Lettuce client
+  # connects via the standard Redis protocol and is fully compatible.
   engine               = "valkey"
   engine_version       = "7.2"
   node_type            = var.environment == "prod" ? "cache.r6g.large" : "cache.t4g.medium"

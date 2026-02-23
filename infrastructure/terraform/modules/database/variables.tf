@@ -18,10 +18,13 @@ variable "allowed_security_groups" {
   type        = list(string)
 }
 
+# DEPRECATED: Password is now managed by RDS via Secrets Manager (manage_master_user_password = true).
+# Retained for backward compatibility during migration.
 variable "db_password" {
-  description = "RDS master password"
+  description = "DEPRECATED: RDS password is now managed by Secrets Manager. Retained for backward compatibility."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "kms_key_arn" {

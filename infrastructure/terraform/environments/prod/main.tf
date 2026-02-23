@@ -102,12 +102,26 @@ variable "alert_email" {
   type        = string
 }
 
-# WARNING: This value is stored in Terraform state. Consider migrating to
-# aws_rds_cluster.manage_master_user_password for Secrets Manager-managed rotation.
+variable "allowed_api_cidrs" {
+  description = "CIDRs allowed to access the EKS API server (e.g., office/VPN IPs)"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.allowed_api_cidrs) > 0
+    error_message = "allowed_api_cidrs must be explicitly set — do not use a broad CIDR like 10.0.0.0/8."
+  }
+
+  validation {
+    condition     = !contains(var.allowed_api_cidrs, "10.0.0.0/8") && !contains(var.allowed_api_cidrs, "0.0.0.0/0")
+    error_message = "allowed_api_cidrs must not contain overly broad CIDRs (10.0.0.0/8 or 0.0.0.0/0)."
+  }
+}
+
 variable "db_password" {
-  description = "RDS master password"
+  description = "DEPRECATED: RDS password is now managed by Secrets Manager. This variable is retained for backward compatibility."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "enable_secret_rotation" {
@@ -172,8 +186,7 @@ module "eks" {
   cluster_name              = "cobalt-${var.environment}"
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
-  # TODO: Replace with actual office/VPN CIDRs for production
-  allowed_api_cidrs         = ["10.0.0.0/8"]
+  allowed_api_cidrs         = var.allowed_api_cidrs
   node_instance_types       = ["t4g.large"]
   capacity_type             = "ON_DEMAND"
   node_min_size             = 2
@@ -192,10 +205,11 @@ module "database" {
   vpc_id                  = module.networking.vpc_id
   subnet_ids              = module.networking.database_subnet_ids
   allowed_security_groups = [module.eks.cluster_security_group_id]
-  db_password             = var.db_password
+  # db_password is now managed by RDS via Secrets Manager (manage_master_user_password = true)
+  # db_password             = var.db_password
   kms_key_arn             = module.security_base.kms_rds_key_arn
   enable_multi_az         = true
-  enable_read_replica     = false
+  enable_read_replica     = true
 
   providers = {
     aws           = aws

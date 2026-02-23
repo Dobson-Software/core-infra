@@ -102,6 +102,17 @@ variable "alert_email" {
   type        = string
 }
 
+variable "allowed_api_cidrs" {
+  description = "CIDRs allowed to access the EKS API server"
+  type        = list(string)
+  default     = ["10.0.0.0/16"]
+
+  validation {
+    condition     = length(var.allowed_api_cidrs) > 0
+    error_message = "allowed_api_cidrs must not be empty."
+  }
+}
+
 variable "db_password" {
   description = "RDS master password"
   type        = string
@@ -163,7 +174,7 @@ module "eks" {
   cluster_name              = "cobalt-${var.environment}"
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
-  allowed_api_cidrs         = ["10.0.0.0/8"]
+  allowed_api_cidrs         = var.allowed_api_cidrs
   node_instance_types       = ["t4g.medium"]
   capacity_type             = "SPOT"
   node_min_size             = 1

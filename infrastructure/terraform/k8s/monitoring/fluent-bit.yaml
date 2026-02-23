@@ -98,6 +98,14 @@ spec:
       containers:
         - name: fluent-bit
           image: fluent/fluent-bit:3.2
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: 50m

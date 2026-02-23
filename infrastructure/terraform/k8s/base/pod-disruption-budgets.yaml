@@ -4,7 +4,7 @@ metadata:
   name: core-service
   namespace: cobalt-services
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: core-service
@@ -15,7 +15,7 @@ metadata:
   name: notification-service
   namespace: cobalt-services
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: notification-service
@@ -26,7 +26,7 @@ metadata:
   name: violations-service
   namespace: cobalt-services
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: violations-service
@@ -37,7 +37,7 @@ metadata:
   name: frontend
   namespace: cobalt-services
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels:
       app: frontend
