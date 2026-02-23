@@ -32,3 +32,9 @@ variable "enable_secret_rotation" {
   type        = bool
   default     = false
 }
+
+variable "pg8000_layer_arn" {
+  description = "ARN of a Lambda layer containing the pg8000 Python package (pure-Python PostgreSQL driver). Required for secret rotation to connect to RDS during setSecret/testSecret steps."
+  type        = string
+  default     = ""
+}

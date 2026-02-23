@@ -1,0 +1,58 @@
+# ServiceMonitors for Cobalt backend services
+# Scrapes Spring Boot Actuator Prometheus endpoint on management port 8090
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: core-service
+  namespace: cobalt-monitoring
+  labels:
+    app.kubernetes.io/part-of: cobalt
+spec:
+  namespaceSelector:
+    matchNames:
+      - cobalt-services
+  selector:
+    matchLabels:
+      app: core-service
+  endpoints:
+    - port: management
+      path: /api/actuator/prometheus
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: notification-service
+  namespace: cobalt-monitoring
+  labels:
+    app.kubernetes.io/part-of: cobalt
+spec:
+  namespaceSelector:
+    matchNames:
+      - cobalt-services
+  selector:
+    matchLabels:
+      app: notification-service
+  endpoints:
+    - port: management
+      path: /api/actuator/prometheus
+      interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: violations-service
+  namespace: cobalt-monitoring
+  labels:
+    app.kubernetes.io/part-of: cobalt
+spec:
+  namespaceSelector:
+    matchNames:
+      - cobalt-services
+  selector:
+    matchLabels:
+      app: violations-service
+  endpoints:
+    - port: management
+      path: /api/actuator/prometheus
+      interval: 30s

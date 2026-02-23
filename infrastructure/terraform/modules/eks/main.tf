@@ -27,8 +27,11 @@ module "eks" {
   vpc_id     = var.vpc_id
   subnet_ids = var.subnet_ids
 
+  # IMPORTANT: allowed_api_cidrs MUST be populated with VPN/office CIDRs for production.
+  # Public access is restricted to those CIDRs; private access allows in-VPC communication.
   cluster_endpoint_public_access       = true
   cluster_endpoint_public_access_cidrs = var.allowed_api_cidrs
+  cluster_endpoint_private_access      = true
 
   create_kms_key = false
 
@@ -53,6 +56,9 @@ module "eks" {
     aws-ebs-csi-driver = {
       most_recent              = true
       service_account_role_arn = module.ebs_csi_irsa.iam_role_arn
+    }
+    metrics-server = {
+      most_recent = true
     }
   }
 
@@ -503,6 +509,24 @@ resource "helm_release" "external_secrets" {
       }
     }
   })]
+
+  depends_on = [module.eks]
+}
+
+################################################################################
+# Prometheus / Grafana / Alertmanager (kube-prometheus-stack)
+################################################################################
+
+resource "helm_release" "prometheus_stack" {
+  name       = "kube-prometheus-stack"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  namespace  = "cobalt-monitoring"
+  version    = "65.3.1"
+
+  create_namespace = true
+
+  values = [file("${path.module}/../../k8s/monitoring/prometheus-stack-values.yaml")]
 
   depends_on = [module.eks]
 }

@@ -28,10 +28,13 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
-        - ipBlock:
-            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-ingress
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-services
       ports:
         - protocol: TCP
           port: 8080
@@ -77,10 +80,13 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
-        - ipBlock:
-            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-ingress
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-services
       ports:
         - protocol: TCP
           port: 8081
@@ -120,10 +126,13 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
-        - ipBlock:
-            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-ingress
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-services
       ports:
         - protocol: TCP
           port: 8082
@@ -161,10 +170,10 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # TODO: Restrict to ALB security group CIDR or pod/namespace selector for tighter isolation
     - from:
-        - ipBlock:
-            cidr: ${VPC_CIDR}  # ALB forwards traffic from within the VPC
+        - namespaceSelector:
+            matchLabels:
+              name: cobalt-ingress
       ports:
         - protocol: TCP
           port: 8080

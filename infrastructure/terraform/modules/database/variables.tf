@@ -43,3 +43,9 @@ variable "enable_read_replica" {
   type        = bool
   default     = null
 }
+
+variable "preferred_backup_window" {
+  description = "Daily time range for automated backups (UTC). Format: hh24:mi-hh24:mi"
+  type        = string
+  default     = "03:00-04:00"
+}

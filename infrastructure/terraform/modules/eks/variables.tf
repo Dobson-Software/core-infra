@@ -24,12 +24,12 @@ variable "secrets_access_policy_arn" {
 }
 
 variable "allowed_api_cidrs" {
-  description = "CIDR blocks allowed to access the EKS API endpoint"
+  description = "CIDR blocks allowed to access the EKS API endpoint. Must contain VPN/office CIDRs for production."
   type        = list(string)
 
   validation {
     condition     = length(var.allowed_api_cidrs) > 0 && !contains(var.allowed_api_cidrs, "0.0.0.0/0")
-    error_message = "allowed_api_cidrs must be set and must not contain 0.0.0.0/0 for security."
+    error_message = "allowed_api_cidrs must not be empty. Specify VPN/office CIDRs for production. 0.0.0.0/0 is not allowed."
   }
 }
 

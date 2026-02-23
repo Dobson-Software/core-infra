@@ -1,0 +1,130 @@
+# Values for kube-prometheus-stack Helm chart
+# Deployed by Terraform helm_release in modules/eks/main.tf
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    # Only scrape ServiceMonitors in our namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  # Configure alertmanager to route to a webhook receiver
+  # TODO: Replace with PagerDuty/Slack integration
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'default'
+      routes:
+        - receiver: 'critical'
+          match:
+            severity: critical
+          repeat_interval: 1h
+    receivers:
+      - name: 'default'
+        # TODO: Add Slack/PagerDuty webhook_configs here
+      - name: 'critical'
+        # TODO: Add PagerDuty integration for critical alerts
+
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 10Gi
+  # Grafana is internal-only, accessed via kubectl port-forward
+  service:
+    type: ClusterIP
+  # Pre-install Cobalt dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'cobalt'
+          orgId: 1
+          folder: 'Cobalt'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/cobalt
+  dashboards:
+    cobalt:
+      cobalt-overview:
+        json: |
+          {
+            "title": "Cobalt Platform Overview",
+            "uid": "cobalt-overview",
+            "description": "High-level platform health dashboard",
+            "panels": [
+              {
+                "title": "Request Rate (5xx)",
+                "type": "timeseries",
+                "targets": [{"expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) by (application)"}],
+                "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+              },
+              {
+                "title": "P99 Latency",
+                "type": "timeseries",
+                "targets": [{"expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le, application))"}],
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+              },
+              {
+                "title": "Pod Restarts",
+                "type": "stat",
+                "targets": [{"expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"cobalt-services\"}[1h])) by (pod)"}],
+                "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+              },
+              {
+                "title": "HikariCP Active Connections",
+                "type": "timeseries",
+                "targets": [{"expr": "hikaricp_connections_active{namespace=\"cobalt-services\"}"}],
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+              }
+            ]
+          }
+
+# Disable components we don't need
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false

@@ -95,14 +95,20 @@ spec:
     spec:
       serviceAccountName: fluent-bit
       terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
       containers:
         - name: fluent-bit
           image: fluent/fluent-bit:3.2
           securityContext:
-            runAsNonRoot: false
-            runAsUser: 0
-            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -142,6 +148,10 @@ spec:
               readOnly: true
             - name: config
               mountPath: /fluent-bit/etc/
+              readOnly: true
+            - name: flb-db
+              mountPath: /var/log/flb_kube.db
+              subPath: flb_kube.db
       volumes:
         - name: varlog
           hostPath:
@@ -149,6 +159,8 @@ spec:
         - name: config
           configMap:
             name: fluent-bit-config
+        - name: flb-db
+          emptyDir: {}
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
