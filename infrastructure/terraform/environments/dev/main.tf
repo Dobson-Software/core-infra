@@ -302,7 +302,7 @@ module "incident_response" {
   sns_alert_topic_arn        = module.monitoring.sns_topic_arn
   secrets_manager_secret_id  = "cobalt-${var.environment}-incident-response"
   secrets_manager_secret_arn = "arn:aws:secretsmanager:${var.aws_region}:*:secret:cobalt-${var.environment}-incident-response-*"
-  github_repo                = "your-org/cobalt"
+  github_repo                = "Dobson-Software/cobalt"
 }
 
 ################################################################################

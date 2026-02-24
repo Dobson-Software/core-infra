@@ -1,5 +1,9 @@
 ################################################################################
 # Network Policies — Pod Isolation for cobalt-services namespace
+#
+# NOTE: Each service policy uses matchExpressions with In operator to cover
+# both standard (app: <service>) and blue/green deployment (app: <service>-green)
+# pod labels. This ensures NetworkPolicy allows traffic during blue/green promotes.
 ################################################################################
 
 # Default deny all ingress and egress
@@ -22,8 +26,12 @@ metadata:
   namespace: cobalt-services
 spec:
   podSelector:
-    matchLabels:
-      app: core-service
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - core-service
+          - core-service-green
   policyTypes:
     - Ingress
     - Egress
@@ -64,8 +72,12 @@ spec:
     # Notification service (inter-service communication)
     - to:
         - podSelector:
-            matchLabels:
-              app: notification-service
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - notification-service
+                  - notification-service-green
       ports:
         - protocol: TCP
           port: 8081
@@ -82,8 +94,12 @@ metadata:
   namespace: cobalt-services
 spec:
   podSelector:
-    matchLabels:
-      app: notification-service
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - notification-service
+          - notification-service-green
   policyTypes:
     - Ingress
     - Egress
@@ -136,8 +152,12 @@ metadata:
   namespace: cobalt-services
 spec:
   podSelector:
-    matchLabels:
-      app: violations-service
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - violations-service
+          - violations-service-green
   policyTypes:
     - Ingress
     - Egress
@@ -188,8 +208,12 @@ metadata:
   namespace: cobalt-services
 spec:
   podSelector:
-    matchLabels:
-      app: frontend
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - frontend
+          - frontend-green
   policyTypes:
     - Ingress
     - Egress

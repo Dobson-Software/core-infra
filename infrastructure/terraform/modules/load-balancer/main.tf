@@ -59,6 +59,14 @@ resource "aws_security_group" "alb" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  egress {
+    description = "Allow health check traffic to management/actuator port"
+    from_port   = 8090
+    to_port     = 8090
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   tags = {
     Name        = "cobalt-alb-${var.environment}"
     Environment = var.environment
@@ -103,11 +111,13 @@ resource "aws_lb_target_group" "core_service" {
 
   health_check {
     path                = "/api/actuator/health"
-    port                = "traffic-port"
-    healthy_threshold   = 2
+    port                = "8090"
+    protocol            = "HTTP"
+    healthy_threshold   = 3
     unhealthy_threshold = 3
     interval            = 30
     timeout             = 5
+    matcher             = "200"
   }
 
   tags = { Environment = var.environment }
@@ -122,11 +132,13 @@ resource "aws_lb_target_group" "notification_service" {
 
   health_check {
     path                = "/api/actuator/health"
-    port                = "traffic-port"
-    healthy_threshold   = 2
+    port                = "8090"
+    protocol            = "HTTP"
+    healthy_threshold   = 3
     unhealthy_threshold = 3
     interval            = 30
     timeout             = 5
+    matcher             = "200"
   }
 
   tags = { Environment = var.environment }
@@ -141,11 +153,13 @@ resource "aws_lb_target_group" "violations_service" {
 
   health_check {
     path                = "/api/actuator/health"
-    port                = "traffic-port"
-    healthy_threshold   = 2
+    port                = "8090"
+    protocol            = "HTTP"
+    healthy_threshold   = 3
     unhealthy_threshold = 3
     interval            = 30
     timeout             = 5
+    matcher             = "200"
   }
 
   tags = { Environment = var.environment }

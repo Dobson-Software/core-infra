@@ -34,7 +34,12 @@ variable "enable_secret_rotation" {
 }
 
 variable "pg8000_layer_arn" {
-  description = "ARN of a Lambda layer containing the pg8000 Python package (pure-Python PostgreSQL driver). Required for secret rotation to connect to RDS during setSecret/testSecret steps."
+  description = <<-EOT
+    ARN of the Lambda layer containing pg8000 Python package.
+    Required when enable_secret_rotation = true.
+    Build the layer: pip install pg8000 -t python/ && zip -r pg8000-layer.zip python/
+    Then upload as a Lambda layer in the same region.
+  EOT
   type        = string
   default     = ""
 }

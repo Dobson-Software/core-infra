@@ -648,6 +648,13 @@ resource "aws_lambda_function" "secret_rotation" {
     Environment = var.environment
     Module      = "security-base"
   }
+
+  lifecycle {
+    precondition {
+      condition     = var.pg8000_layer_arn != ""
+      error_message = "pg8000_layer_arn must be set when secret rotation is enabled. Build the layer: pip install pg8000 -t python/ && zip -r pg8000-layer.zip python/"
+    }
+  }
 }
 
 resource "aws_lambda_permission" "secret_rotation" {

@@ -1,17 +1,12 @@
 ################################################################################
-# Cobalt Platform — Prod Environment
+# Cobalt Platform — Staging Environment
+#
+# Intermediate environment between dev and prod for integration/load testing.
+# Security matches prod (CMK, GuardDuty, Config). Compute is scaled down.
 ################################################################################
 
 terraform {
   required_version = ">= 1.5.0"
-
-  backend "s3" {
-    bucket         = "cobalt-terraform-state"
-    key            = "environments/prod/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "cobalt-terraform-locks"
-    encrypt        = true
-  }
 
   required_providers {
     aws = {
@@ -77,7 +72,7 @@ data "aws_eks_cluster_auth" "this" {
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "prod"
+  default     = "staging"
 }
 
 variable "aws_region" {
@@ -89,7 +84,7 @@ variable "aws_region" {
 variable "vpc_cidr" {
   description = "VPC CIDR block"
   type        = string
-  default     = "10.1.0.0/16"
+  default     = "10.2.0.0/16"
 }
 
 variable "domain_name" {
@@ -118,20 +113,20 @@ variable "allowed_api_cidrs" {
 }
 
 variable "db_password" {
-  description = "DEPRECATED: RDS password is now managed by Secrets Manager. This variable is retained for backward compatibility."
+  description = "DEPRECATED: RDS password is now managed by Secrets Manager. Retained for backward compatibility."
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "enable_secret_rotation" {
-  description = "Enable automatic secret rotation (requires a rotation Lambda to be deployed separately)"
+  description = "Enable automatic secret rotation (requires pg8000 Lambda layer)"
   type        = bool
   default     = false
 }
 
 ################################################################################
-# Security Base (must come first — provides KMS keys, no ALB/CDN deps)
+# Security Base (must come first — provides KMS keys)
 ################################################################################
 
 module "security_base" {
@@ -174,7 +169,7 @@ module "networking" {
 }
 
 ################################################################################
-# EKS
+# EKS — scaled down from prod (t4g.medium, 2-5 nodes)
 ################################################################################
 
 module "eks" {
@@ -187,15 +182,15 @@ module "eks" {
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
   allowed_api_cidrs         = var.allowed_api_cidrs
-  node_instance_types       = ["t4g.large"]
+  node_instance_types       = ["t4g.medium"]
   capacity_type             = "ON_DEMAND"
   node_min_size             = 2
-  node_max_size             = 6
-  node_desired_size         = 3
+  node_max_size             = 5
+  node_desired_size         = 2
 }
 
 ################################################################################
-# Database
+# Database — single-AZ, no read replica (cost savings vs prod)
 ################################################################################
 
 module "database" {
@@ -205,11 +200,8 @@ module "database" {
   vpc_id                  = module.networking.vpc_id
   subnet_ids              = module.networking.database_subnet_ids
   allowed_security_groups = [module.eks.cluster_security_group_id]
-  # db_password is now managed by RDS via Secrets Manager (manage_master_user_password = true)
-  # db_password             = var.db_password
   kms_key_arn             = module.security_base.kms_rds_key_arn
-  enable_multi_az         = true
-  enable_read_replica     = true
+  enable_multi_az         = false
 
   providers = {
     aws           = aws
@@ -306,14 +298,14 @@ module "monitoring" {
 }
 
 ################################################################################
-# AI Incident Response (SNS → Lambda → Claude API → GitHub Issue)
+# AI Incident Response (SNS -> Lambda -> Claude API -> GitHub Issue)
 ################################################################################
 
 module "incident_response" {
   source = "../../modules/incident-response"
 
   environment                = var.environment
-  enable_incident_response   = false # Enable when API keys are stored in Secrets Manager
+  enable_incident_response   = false
   sns_alert_topic_arn        = module.monitoring.sns_topic_arn
   secrets_manager_secret_id  = "cobalt-${var.environment}-incident-response"
   secrets_manager_secret_arn = "arn:aws:secretsmanager:${var.aws_region}:*:secret:cobalt-${var.environment}-incident-response-*"
@@ -342,11 +334,6 @@ output "eks_cluster_endpoint" {
 output "rds_endpoint" {
   description = "The connection endpoint for the primary RDS instance"
   value       = module.database.endpoint
-}
-
-output "rds_read_replica_endpoint" {
-  description = "The connection endpoint for the RDS read replica instance"
-  value       = module.database.read_replica_endpoint
 }
 
 output "redis_endpoint" {
