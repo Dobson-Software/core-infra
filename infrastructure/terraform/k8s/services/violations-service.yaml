@@ -126,11 +126,6 @@ spec:
                 configMapKeyRef:
                   name: cobalt-config
                   key: cors-allowed-origins
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: cobalt-config
-                  key: otel-endpoint
             - name: PLATFORM_TENANT_ID
               valueFrom:
                 configMapKeyRef:

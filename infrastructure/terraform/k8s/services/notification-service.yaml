@@ -161,11 +161,6 @@ spec:
                 configMapKeyRef:
                   name: cobalt-config
                   key: email-from-address
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: cobalt-config
-                  key: otel-endpoint
           lifecycle:
             preStop:
               exec:

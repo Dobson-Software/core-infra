@@ -158,11 +158,6 @@ spec:
                 configMapKeyRef:
                   name: cobalt-config
                   key: google-client-id
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              valueFrom:
-                configMapKeyRef:
-                  name: cobalt-config
-                  key: otel-endpoint
           lifecycle:
             preStop:
               exec:
