@@ -27,5 +27,9 @@ data:
   otel-endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
   # Environment identifier
   environment: "${ENVIRONMENT}"
+  # Sentry DSN for frontend error tracking
+  sentry-dsn: "${SENTRY_DSN}"
+  # Email sender address (required for notification-service in prod)
+  email-from-address: "${COBALT_EMAIL_FROM_ADDRESS}"
   # Platform admin tenant ID (required for violations-service admin sync)
   platform-tenant-id: "${PLATFORM_TENANT_ID}"

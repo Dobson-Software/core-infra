@@ -34,6 +34,9 @@ alertmanager:
   # To configure: store the Slack webhook URL in AWS Secrets Manager at
   # cobalt/{env}/alertmanager-slack-webhook-url
   # For PagerDuty integration, replace slack_configs with pagerduty_configs.
+  alertmanagerSpec:
+    secrets:
+      - alertmanager-slack-webhook
   config:
     global:
       resolve_timeout: 5m
@@ -51,14 +54,14 @@ alertmanager:
     receivers:
       - name: 'default'
         slack_configs:
-          - api_url_file: '/etc/alertmanager/secrets/slack-webhook-url'
+          - api_url_file: '/etc/alertmanager/secrets/alertmanager-slack-webhook/webhook-url'
             channel: '#cobalt-alerts'
             send_resolved: true
             title: '{{ template "slack.default.title" . }}'
             text: '{{ template "slack.default.text" . }}'
       - name: 'critical'
         slack_configs:
-          - api_url_file: '/etc/alertmanager/secrets/slack-webhook-url'
+          - api_url_file: '/etc/alertmanager/secrets/alertmanager-slack-webhook/webhook-url'
             channel: '#cobalt-alerts-critical'
             send_resolved: true
             title: '[CRITICAL] {{ template "slack.default.title" . }}'

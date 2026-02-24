@@ -69,9 +69,57 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: generate-config
+          image: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cobalt/frontend:${IMAGE_TAG}"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              envsubst < /usr/share/nginx/html/config.js.template > /config-output/config.js
+          env:
+            - name: API_BASE_URL
+              value: ""
+            - name: VIOLATIONS_API_URL
+              value: ""
+            - name: NOTIFICATION_API_URL
+              value: ""
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cobalt-stripe-keys
+                  key: publishable-key
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: google-client-id
+            - name: SENTRY_DSN
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: sentry-dsn
+            - name: WS_URL
+              value: ""
+            - name: APP_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: frontend-url
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config-output
+              mountPath: /config-output
       containers:
         - name: frontend
           image: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cobalt/frontend:${IMAGE_TAG}"
+          command: ["nginx", "-g", "daemon off;"]
           ports:
             - containerPort: 8080
               protocol: TCP
@@ -98,6 +146,10 @@ spec:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            - name: config-output
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
+              readOnly: true
           startupProbe:
             httpGet:
               path: /
@@ -122,6 +174,8 @@ spec:
         - name: tmp
           emptyDir: {}
         - name: cache
+          emptyDir: {}
+        - name: config-output
           emptyDir: {}
         - name: nginx-config
           configMap:

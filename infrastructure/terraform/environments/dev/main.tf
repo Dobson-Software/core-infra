@@ -175,7 +175,7 @@ module "eks" {
   secrets_access_policy_arn = module.security_base.secrets_access_policy_arn
   eks_kms_key_arn           = module.security_base.kms_eks_key_arn
   allowed_api_cidrs         = var.allowed_api_cidrs
-  node_instance_types       = ["t4g.medium"]
+  node_instance_types       = ["t3.medium"]
   capacity_type             = "SPOT"
   node_min_size             = 1
   node_max_size             = 3

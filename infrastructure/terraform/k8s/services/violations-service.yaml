@@ -84,8 +84,6 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
-            - name: LOGGING_STRUCTURED_FORMAT_CONSOLE
-              value: "logstash"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:
