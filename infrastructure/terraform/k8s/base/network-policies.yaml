@@ -31,10 +31,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: cobalt-ingress
+              kubernetes.io/metadata.name: cobalt-ingress
         - namespaceSelector:
             matchLabels:
-              name: cobalt-services
+              kubernetes.io/metadata.name: cobalt-services
       ports:
         - protocol: TCP
           port: 8080
@@ -83,10 +83,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: cobalt-ingress
+              kubernetes.io/metadata.name: cobalt-ingress
         - namespaceSelector:
             matchLabels:
-              name: cobalt-services
+              kubernetes.io/metadata.name: cobalt-services
       ports:
         - protocol: TCP
           port: 8081
@@ -129,10 +129,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: cobalt-ingress
+              kubernetes.io/metadata.name: cobalt-ingress
         - namespaceSelector:
             matchLabels:
-              name: cobalt-services
+              kubernetes.io/metadata.name: cobalt-services
       ports:
         - protocol: TCP
           port: 8082
@@ -173,7 +173,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: cobalt-ingress
+              kubernetes.io/metadata.name: cobalt-ingress
       ports:
         - protocol: TCP
           port: 8080

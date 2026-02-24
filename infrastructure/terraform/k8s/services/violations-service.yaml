@@ -133,6 +133,11 @@ spec:
                 configMapKeyRef:
                   name: cobalt-config
                   key: otel-endpoint
+            - name: PLATFORM_TENANT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: platform-tenant-id
           lifecycle:
             preStop:
               exec:

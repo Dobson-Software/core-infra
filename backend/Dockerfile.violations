@@ -9,8 +9,10 @@ WORKDIR /app
 COPY settings.gradle.kts build.gradle.kts ./
 COPY platform-common/ platform-common/
 COPY violations-service/ violations-service/
+COPY core-services/ core-services/
 COPY gradle/ gradle/
 COPY gradlew ./
+COPY auth-module/ auth-module/
 RUN chmod +x gradlew
 
 RUN ./gradlew :violations-service:bootJar --no-daemon -x test -x checkstyleMain -x checkstyleTest -x checkNoMocks

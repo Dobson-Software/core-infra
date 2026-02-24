@@ -48,9 +48,13 @@ alertmanager:
           repeat_interval: 1h
     receivers:
       - name: 'default'
-        # TODO: Add Slack/PagerDuty webhook_configs here
+        webhook_configs:
+          - url: 'http://alertmanager-webhook.cobalt-monitoring:9095/webhook'
+            send_resolved: true
       - name: 'critical'
-        # TODO: Add PagerDuty integration for critical alerts
+        webhook_configs:
+          - url: 'http://alertmanager-webhook.cobalt-monitoring:9095/webhook'
+            send_resolved: true
 
 grafana:
   admin:

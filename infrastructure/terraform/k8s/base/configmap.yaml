@@ -27,3 +27,5 @@ data:
   otel-endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT}"
   # Environment identifier
   environment: "${ENVIRONMENT}"
+  # Platform admin tenant ID (required for violations-service admin sync)
+  platform-tenant-id: "${PLATFORM_TENANT_ID}"
