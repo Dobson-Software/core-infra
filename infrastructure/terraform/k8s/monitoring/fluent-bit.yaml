@@ -13,6 +13,21 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: fluent-bit-env
+  namespace: monitoring
+  labels:
+    app: fluent-bit
+data:
+  # These values are used by the Fluent Bit DaemonSet to tag log entries.
+  # They live in the monitoring namespace (not cobalt-services) so the
+  # DaemonSet can reference them without cross-namespace issues.
+  # Update these when deploying to match the target cluster/environment.
+  cluster-name: "${CLUSTER_NAME}"
+  environment: "${ENVIRONMENT}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: fluent-bit-config
   namespace: monitoring
 data:
@@ -137,16 +152,19 @@ spec:
                 secretKeyRef:
                   name: axiom-credentials
                   key: dataset
+            # CLUSTER_NAME and ENVIRONMENT are resolved at runtime by Fluent Bit.
+            # These use a local ConfigMap in the monitoring namespace (not cobalt-config
+            # which lives in cobalt-services — cross-namespace ConfigMap refs don't work).
             - name: CLUSTER_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: cobalt-config
+                  name: fluent-bit-env
                   key: cluster-name
                   optional: true
             - name: ENVIRONMENT
               valueFrom:
                 configMapKeyRef:
-                  name: cobalt-config
+                  name: fluent-bit-env
                   key: environment
                   optional: true
           volumeMounts:

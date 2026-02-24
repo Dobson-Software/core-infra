@@ -42,7 +42,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: monitoring
+              kubernetes.io/metadata.name: cobalt-monitoring
       ports:
         - protocol: TCP
           port: 8090
@@ -102,7 +102,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: monitoring
+              kubernetes.io/metadata.name: cobalt-monitoring
       ports:
         - protocol: TCP
           port: 8090
@@ -156,7 +156,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: monitoring
+              kubernetes.io/metadata.name: cobalt-monitoring
       ports:
         - protocol: TCP
           port: 8090

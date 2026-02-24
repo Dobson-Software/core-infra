@@ -7,6 +7,8 @@ WORKDIR /app
 
 COPY settings.gradle.kts build.gradle.kts ./
 COPY platform-common/ platform-common/
+COPY core-services/ core-services/
+COPY auth-module/ auth-module/
 COPY core-service/ core-service/
 COPY notification-service/ notification-service/
 COPY violations-service/ violations-service/
