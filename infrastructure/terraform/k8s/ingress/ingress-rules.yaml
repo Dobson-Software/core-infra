@@ -17,8 +17,11 @@ metadata:
     alb.ingress.kubernetes.io/conditions.core-service: '{"field":"path-pattern","pathPatternConfig":{"values":["/api/*"]}}'
     alb.ingress.kubernetes.io/target-group-attributes.core-service: "deregistration_delay.timeout_seconds=30"
     alb.ingress.kubernetes.io/healthcheck-path.core-service: /api/actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port.core-service: "8090"
     alb.ingress.kubernetes.io/healthcheck-path.notification-service: /api/actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port.notification-service: "8090"
     alb.ingress.kubernetes.io/healthcheck-path.violations-service: /api/actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port.violations-service: "8090"
     alb.ingress.kubernetes.io/healthcheck-path.frontend: /
 spec:
   ingressClassName: alb
