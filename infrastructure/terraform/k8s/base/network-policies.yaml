@@ -38,6 +38,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    # Prometheus scrape (management port)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8090
   egress:
     # DNS
     - ports:
@@ -90,6 +98,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8081
+    # Prometheus scrape (management port)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8090
   egress:
     # DNS
     - ports:
@@ -136,6 +152,14 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
+    # Prometheus scrape (management port)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8090
   egress:
     # DNS
     - ports:

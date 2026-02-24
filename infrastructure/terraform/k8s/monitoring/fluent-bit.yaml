@@ -1,3 +1,10 @@
+# WARNING: This file contains ${VAR} references (e.g. ${CLUSTER_NAME},
+# ${ENVIRONMENT}, ${AXIOM_DATASET}, ${AXIOM_API_TOKEN}) that are resolved at
+# runtime by Fluent Bit from container environment variables. Do NOT pipe this
+# file through envsubst or similar shell-variable substitution tools, as that
+# would replace these references with empty strings and break the config.
+# If your deploy pipeline uses envsubst on K8s manifests, exclude this file or
+# use the $$ escape syntax in your envsubst invocation.
 apiVersion: v1
 kind: Namespace
 metadata:

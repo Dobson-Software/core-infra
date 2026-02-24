@@ -345,47 +345,12 @@ resource "aws_iam_policy" "cloudwatch_logs" {
 
 ################################################################################
 # Secrets Manager Secrets with Rotation
+#
+# NOTE: Application secrets (jwt-secret, stripe-keys, twilio-credentials,
+# socrata-token, etc.) are managed by the secrets-bootstrap module in the
+# cobalt repo. Only the db-password secret remains here because it is used
+# by the secret-rotation Lambda defined below.
 ################################################################################
-
-resource "aws_secretsmanager_secret" "jwt_secret" {
-  name       = "cobalt/${var.environment}/jwt-secret"
-  kms_key_id = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : null
-
-  tags = {
-    Environment = var.environment
-    Module      = "security-base"
-  }
-}
-
-resource "aws_secretsmanager_secret" "stripe_keys" {
-  name       = "cobalt/${var.environment}/stripe-keys"
-  kms_key_id = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : null
-
-  tags = {
-    Environment = var.environment
-    Module      = "security-base"
-  }
-}
-
-resource "aws_secretsmanager_secret" "twilio_credentials" {
-  name       = "cobalt/${var.environment}/twilio-credentials"
-  kms_key_id = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : null
-
-  tags = {
-    Environment = var.environment
-    Module      = "security-base"
-  }
-}
-
-resource "aws_secretsmanager_secret" "socrata_token" {
-  name       = "cobalt/${var.environment}/socrata-token"
-  kms_key_id = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : null
-
-  tags = {
-    Environment = var.environment
-    Module      = "security-base"
-  }
-}
 
 resource "aws_secretsmanager_secret" "db_password" {
   name       = "cobalt/${var.environment}/db-password"
