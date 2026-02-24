@@ -28,3 +28,9 @@ variable "enable_cache" {
   type        = bool
   default     = true
 }
+
+variable "node_type" {
+  description = "Override ElastiCache node type. If null, defaults to cache.r6g.large (prod) or cache.t4g.medium (non-prod)."
+  type        = string
+  default     = null
+}

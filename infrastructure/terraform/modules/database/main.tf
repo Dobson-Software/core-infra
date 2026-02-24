@@ -104,7 +104,7 @@ resource "aws_db_instance" "primary" {
 
   engine         = "postgres"
   engine_version = "15"
-  instance_class = var.environment == "prod" ? "db.r6g.large" : "db.t4g.micro"
+  instance_class = coalesce(var.instance_class, var.environment == "prod" ? "db.r6g.large" : "db.t4g.micro")
 
   allocated_storage     = 20
   max_allocated_storage = var.environment == "prod" ? 500 : 100

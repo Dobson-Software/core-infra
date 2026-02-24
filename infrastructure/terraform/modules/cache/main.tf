@@ -102,7 +102,7 @@ resource "aws_elasticache_replication_group" "cobalt" {
   # connects via the standard Redis protocol and is fully compatible.
   engine               = "valkey"
   engine_version       = "7.2"
-  node_type            = var.environment == "prod" ? "cache.r6g.large" : "cache.t4g.medium"
+  node_type            = coalesce(var.node_type, var.environment == "prod" ? "cache.r6g.large" : "cache.t4g.medium")
   num_cache_clusters   = var.environment == "prod" ? 2 : 1
   parameter_group_name = aws_elasticache_parameter_group.cobalt[0].name
   port                 = 6379

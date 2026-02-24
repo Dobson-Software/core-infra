@@ -145,7 +145,7 @@ resource "helm_release" "cluster_autoscaler" {
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "cluster-autoscaler"
   namespace  = "kube-system"
-  version    = "9.29.0"
+  version    = "9.37.0"
 
   values = [yamlencode({
     autoDiscovery = {

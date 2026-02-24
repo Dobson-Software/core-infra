@@ -49,3 +49,9 @@ variable "preferred_backup_window" {
   type        = string
   default     = "03:00-04:00"
 }
+
+variable "instance_class" {
+  description = "Override RDS instance class. If null, defaults to db.r6g.large (prod) or db.t4g.micro (non-prod)."
+  type        = string
+  default     = null
+}
