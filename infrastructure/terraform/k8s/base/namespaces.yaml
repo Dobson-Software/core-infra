@@ -16,6 +16,11 @@ metadata:
   labels:
     app.kubernetes.io/part-of: cobalt
     app.kubernetes.io/managed-by: kubectl
+    # Baseline allows Prometheus/Grafana Helm chart workloads that may need
+    # hostNetwork or hostPorts for node-exporter scraping.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
 ---
 apiVersion: v1
 kind: Namespace

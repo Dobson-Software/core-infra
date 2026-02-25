@@ -9,6 +9,12 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
+  labels:
+    # Baseline allows hostPath volumes required by Fluent Bit for log collection.
+    # Fluent Bit needs /var/log access to ship container logs to Axiom.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -44,7 +50,7 @@ data:
     [INPUT]
         Name              tail
         Tag               kube.*
-        Path              /var/log/containers/cobalt-*.log
+        Path              /var/log/containers/*_cobalt-services_*.log
         Parser            cri
         DB                /var/log/flb_kube.db
         Mem_Buf_Limit     5MB
@@ -124,7 +130,7 @@ spec:
         fsGroup: 1001
       containers:
         - name: fluent-bit
-          image: fluent/fluent-bit:3.2
+          image: fluent/fluent-bit:3.2@sha256:41370c4edd3a09db6565271ef647a5f69808007cf6c8ce5f205e056a77a18f41
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
