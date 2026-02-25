@@ -471,6 +471,7 @@ data "aws_iam_policy_document" "eso_assume" {
       values = [
         "system:serviceaccount:cobalt-services:external-secrets",
         "system:serviceaccount:cobalt-monitoring:external-secrets",
+        "system:serviceaccount:monitoring:external-secrets",
       ]
     }
 

@@ -168,6 +168,7 @@ spec:
               port: 8080
             failureThreshold: 10
             periodSeconds: 3
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /
@@ -175,6 +176,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 15
             failureThreshold: 3
+            timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /
@@ -182,6 +184,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
+            timeoutSeconds: 3
       volumes:
         - name: tmp
           emptyDir: {}

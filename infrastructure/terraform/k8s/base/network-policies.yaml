@@ -274,6 +274,50 @@ spec:
     - Ingress
     - Egress
 ---
+# cobalt-monitoring: allow Prometheus scraping, Alertmanager Slack egress, Grafana ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-traffic
+  namespace: cobalt-monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cobalt-monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    # Prometheus scrape targets (management port)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cobalt-services
+      ports:
+        - protocol: TCP
+          port: 8090
+    # Alertmanager → Slack/PagerDuty webhooks
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
 ################################################################################
 # Network Policies — cobalt-services namespace (continued)
 ################################################################################
