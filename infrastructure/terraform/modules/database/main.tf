@@ -126,9 +126,10 @@ resource "aws_db_instance" "primary" {
   monitoring_role_arn = aws_iam_role.rds_enhanced_monitoring.arn
 
   performance_insights_enabled = true
-  backup_retention_period      = var.environment == "prod" ? 30 : 7
-  preferred_backup_window      = var.preferred_backup_window
-  skip_final_snapshot          = var.environment != "prod"
+  backup_retention_period        = var.environment == "prod" ? 30 : 7
+  preferred_backup_window        = var.preferred_backup_window
+  preferred_maintenance_window   = var.preferred_maintenance_window
+  skip_final_snapshot            = var.environment != "prod"
   final_snapshot_identifier    = var.environment == "prod" ? "cobalt-${var.environment}-final" : null
   deletion_protection          = var.environment == "prod"
 

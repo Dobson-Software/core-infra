@@ -34,3 +34,21 @@ variable "node_type" {
   type        = string
   default     = null
 }
+
+variable "enable_secret_rotation" {
+  description = "Enable automatic rotation of the Redis auth token via Secrets Manager. Requires rotation_lambda_arn to be set."
+  type        = bool
+  default     = false
+}
+
+variable "rotation_lambda_arn" {
+  description = "ARN of the Lambda function that handles Redis auth token rotation. Required when enable_secret_rotation = true."
+  type        = string
+  default     = ""
+}
+
+variable "rotation_days" {
+  description = "Number of days between automatic secret rotations"
+  type        = number
+  default     = 90
+}

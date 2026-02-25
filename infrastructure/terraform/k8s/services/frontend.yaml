@@ -7,6 +7,11 @@ metadata:
     app: frontend
 data:
   default.conf: |
+    map $http_x_forwarded_proto $hsts_header {
+        https   "max-age=63072000; includeSubDomains; preload";
+        default "";
+    }
+
     server {
         listen 8080;
         server_name _;
@@ -17,22 +22,61 @@ data:
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com https://api.stripe.com; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; frame-ancestors 'none';" always;
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Strict-Transport-Security $hsts_header always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.cobaltplatform.com https://accounts.google.com https://api.stripe.com https://*.ingest.sentry.io; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com data:; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 
         # Gzip compression
         gzip on;
         gzip_vary on;
+        gzip_proxied any;
+        gzip_comp_level 6;
         gzip_min_length 1024;
         gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
 
+        # SPA fallback
         location / {
             try_files $uri $uri/ /index.html;
         }
 
+        # Long-lived cache for hashed static assets
+        # NOTE: add_header in a child block replaces ALL parent add_header directives,
+        # so security headers must be repeated here.
         location /assets/ {
             expires 1y;
             add_header Cache-Control "public, immutable";
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            add_header Strict-Transport-Security $hsts_header always;
+            add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.cobaltplatform.com https://accounts.google.com https://api.stripe.com https://*.ingest.sentry.io; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com data:; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+        }
+
+        # config.js must never be cached (generated at container startup with env-specific values)
+        location = /config.js {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            add_header Pragma "no-cache";
+            add_header Expires "0";
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            add_header Strict-Transport-Security $hsts_header always;
+            add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.cobaltplatform.com https://accounts.google.com https://api.stripe.com https://*.ingest.sentry.io; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com data:; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+        }
+
+        # index.html must never be cached (contains hashed asset references)
+        location = /index.html {
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            add_header Pragma "no-cache";
+            add_header Expires "0";
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            add_header Strict-Transport-Security $hsts_header always;
+            add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.cobaltplatform.com https://accounts.google.com https://api.stripe.com https://*.ingest.sentry.io; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com data:; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         }
     }
 ---

@@ -92,6 +92,32 @@ resource "aws_secretsmanager_secret_version" "redis_auth" {
   })
 }
 
+################################################################################
+# Secret Rotation (optional — requires a Redis-specific rotation Lambda)
+################################################################################
+
+resource "aws_lambda_permission" "redis_secret_rotation" {
+  count = var.enable_cache && var.enable_secret_rotation ? 1 : 0
+
+  statement_id  = "AllowSecretsManagerRedisRotation"
+  action        = "lambda:InvokeFunction"
+  function_name = var.rotation_lambda_arn
+  principal     = "secretsmanager.amazonaws.com"
+}
+
+resource "aws_secretsmanager_secret_rotation" "redis_auth" {
+  count = var.enable_cache && var.enable_secret_rotation ? 1 : 0
+
+  secret_id           = aws_secretsmanager_secret.redis_auth[0].id
+  rotation_lambda_arn = var.rotation_lambda_arn
+
+  rotation_rules {
+    automatically_after_days = var.rotation_days
+  }
+
+  depends_on = [aws_lambda_permission.redis_secret_rotation]
+}
+
 resource "aws_elasticache_replication_group" "cobalt" {
   count = var.enable_cache ? 1 : 0
 
