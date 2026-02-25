@@ -174,6 +174,7 @@ spec:
               port: 8090
             initialDelaySeconds: 60
             periodSeconds: 15
+            timeoutSeconds: 3
             failureThreshold: 3
           readinessProbe:
             httpGet:
@@ -181,6 +182,7 @@ spec:
               port: 8090
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 3
             failureThreshold: 3
           startupProbe:
             httpGet:
@@ -188,6 +190,7 @@ spec:
               port: 8090
             failureThreshold: 30
             periodSeconds: 5
+            timeoutSeconds: 3
       volumes:
         - name: tmp
           emptyDir: {}

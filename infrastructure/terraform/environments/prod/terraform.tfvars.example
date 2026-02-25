@@ -3,4 +3,5 @@ aws_region  = "us-east-1"
 vpc_cidr    = "10.1.0.0/16"
 domain_name = "cobaltplatform.com"
 alert_email = "alerts@example.com"
-db_password = "CHANGE_ME"
+# db_password is managed by AWS Secrets Manager with automatic rotation.
+# See modules/security-base for the rotation Lambda configuration.

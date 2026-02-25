@@ -4,11 +4,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.0"
+      version = "~> 5.0"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = ">= 2.0"
+      version = "~> 2.0"
     }
   }
 }
@@ -43,22 +43,24 @@ module "eks" {
     resources        = []
   }
 
+  # Pin addon versions for reproducible deployments.
+  # Update these versions when upgrading the EKS cluster version.
   cluster_addons = {
     coredns = {
-      most_recent = true
+      addon_version = "v1.11.3-eksbuild.2"
     }
     kube-proxy = {
-      most_recent = true
+      addon_version = "v1.31.3-eksbuild.2"
     }
     vpc-cni = {
-      most_recent = true
+      addon_version = "v1.19.0-eksbuild.1"
     }
     aws-ebs-csi-driver = {
-      most_recent              = true
+      addon_version            = "v1.37.0-eksbuild.1"
       service_account_role_arn = module.ebs_csi_irsa.iam_role_arn
     }
     metrics-server = {
-      most_recent = true
+      addon_version = "v0.7.2-eksbuild.2"
     }
   }
 

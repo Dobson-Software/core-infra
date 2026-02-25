@@ -4,7 +4,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      version               = ">= 5.0"
+      version               = "~> 5.0"
       configuration_aliases = [aws.us_west_2]
     }
   }
@@ -115,7 +115,7 @@ resource "aws_db_instance" "primary" {
   db_name  = "cobalt"
   username = "cobalt"
   manage_master_user_password = true
-  master_user_secret_kms_key_id = var.kms_key_arn
+  master_user_secret_kms_key_id = var.kms_key_arn != "" ? var.kms_key_arn : null
 
   multi_az               = var.enable_multi_az != null ? var.enable_multi_az : (var.environment == "prod")
   db_subnet_group_name   = aws_db_subnet_group.cobalt.name

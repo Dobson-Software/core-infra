@@ -9,6 +9,7 @@ prometheus:
         cpu: 500m
         memory: 1Gi
       limits:
+        cpu: 2000m
         memory: 2Gi
     storageSpec:
       volumeClaimTemplate:
@@ -23,6 +24,10 @@ prometheus:
     ruleSelectorNilUsesHelmValues: false
 
 alertmanager:
+  # Slack webhook URL is provided via ExternalSecret from AWS Secrets Manager.
+  # To configure: store the Slack webhook URL in AWS Secrets Manager at
+  # cobalt/{env}/alertmanager-slack-webhook-url
+  # For PagerDuty integration, replace slack_configs with pagerduty_configs.
   alertmanagerSpec:
     resources:
       requests:
@@ -30,11 +35,6 @@ alertmanager:
         memory: 128Mi
       limits:
         memory: 256Mi
-  # Slack webhook URL is provided via ExternalSecret from AWS Secrets Manager.
-  # To configure: store the Slack webhook URL in AWS Secrets Manager at
-  # cobalt/{env}/alertmanager-slack-webhook-url
-  # For PagerDuty integration, replace slack_configs with pagerduty_configs.
-  alertmanagerSpec:
     secrets:
       - alertmanager-slack-webhook
   config:

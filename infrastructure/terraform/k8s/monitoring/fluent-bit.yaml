@@ -196,6 +196,46 @@ spec:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
 ---
+################################################################################
+# Network Policies — monitoring namespace
+################################################################################
+
+# Default deny all ingress and egress in monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow Fluent Bit egress to Axiom (HTTPS) and Kubernetes API (metadata enrichment)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fluent-bit
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: fluent-bit
+  policyTypes:
+    - Egress
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # HTTPS — Axiom (api.axiom.co) and Kubernetes API metadata enrichment
+    - ports:
+        - protocol: TCP
+          port: 443
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:

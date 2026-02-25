@@ -30,3 +30,6 @@ metadata:
     app.kubernetes.io/part-of: cobalt
     app.kubernetes.io/managed-by: kubectl
     app.kubernetes.io/name: cobalt-ingress
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline

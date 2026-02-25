@@ -78,11 +78,20 @@ spec:
               envsubst < /usr/share/nginx/html/config.js.template > /config-output/config.js
           env:
             - name: API_BASE_URL
-              value: ""
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: api-base-url
             - name: VIOLATIONS_API_URL
-              value: ""
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: violations-api-url
             - name: NOTIFICATION_API_URL
-              value: ""
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: notification-api-url
             - name: STRIPE_PUBLISHABLE_KEY
               valueFrom:
                 secretKeyRef:
@@ -99,7 +108,10 @@ spec:
                   name: cobalt-config
                   key: sentry-dsn
             - name: WS_URL
-              value: ""
+              valueFrom:
+                configMapKeyRef:
+                  name: cobalt-config
+                  key: ws-url
             - name: APP_URL
               valueFrom:
                 configMapKeyRef:

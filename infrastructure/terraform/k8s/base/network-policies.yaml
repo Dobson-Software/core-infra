@@ -200,6 +200,64 @@ spec:
         - protocol: TCP
           port: 443
 ---
+################################################################################
+# Network Policies — cobalt-ingress namespace
+################################################################################
+
+# Default deny all ingress and egress in cobalt-ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: cobalt-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow ingress controller to receive traffic from the internet (ports 80/443)
+# and egress to cobalt-services on service ports (8080, 8081, 8082)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-controller
+  namespace: cobalt-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+  egress:
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # cobalt-services: core-service
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cobalt-services
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8082
+---
+################################################################################
+# Network Policies — cobalt-services namespace (continued)
+################################################################################
+
 # frontend: allow ingress from ALB, egress to DNS only
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
