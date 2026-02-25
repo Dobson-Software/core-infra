@@ -33,3 +33,8 @@ data:
   email-from-address: "${COBALT_EMAIL_FROM_ADDRESS}"
   # Platform admin tenant ID (required for violations-service admin sync)
   platform-tenant-id: "${PLATFORM_TENANT_ID}"
+  # Frontend API URLs (behind ALB, all point to same domain)
+  api-base-url: "https://${DOMAIN}/api"
+  violations-api-url: "https://${DOMAIN}/api"
+  notification-api-url: "https://${DOMAIN}/api"
+  ws-url: "wss://${DOMAIN}/ws"

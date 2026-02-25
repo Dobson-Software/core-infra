@@ -25,6 +25,18 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: cobalt
+    app.kubernetes.io/managed-by: kubectl
+    # Baseline: Fluent Bit needs hostPath volume mounts for log collection
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: cobalt-ingress
   labels:
     app.kubernetes.io/part-of: cobalt

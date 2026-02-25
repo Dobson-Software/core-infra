@@ -468,7 +468,10 @@ data "aws_iam_policy_document" "eso_assume" {
     condition {
       test     = "StringEquals"
       variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
-      values   = ["system:serviceaccount:cobalt-services:external-secrets"]
+      values = [
+        "system:serviceaccount:cobalt-services:external-secrets",
+        "system:serviceaccount:cobalt-monitoring:external-secrets",
+      ]
     }
 
     condition {

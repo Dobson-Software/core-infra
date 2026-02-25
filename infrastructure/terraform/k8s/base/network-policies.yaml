@@ -143,6 +143,10 @@ spec:
           port: 587
         - protocol: TCP
           port: 465
+    # HTTPS (Twilio API)
+    - ports:
+        - protocol: TCP
+          port: 443
 ---
 # violations-service: allow ingress from ALB, egress to DB, Redis, DNS, HTTPS (Socrata)
 apiVersion: networking.k8s.io/v1
@@ -253,6 +257,22 @@ spec:
           port: 8081
         - protocol: TCP
           port: 8082
+---
+################################################################################
+# Network Policies — cobalt-monitoring namespace
+################################################################################
+
+# Default deny all ingress and egress in cobalt-monitoring
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: cobalt-monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
 ---
 ################################################################################
 # Network Policies — cobalt-services namespace (continued)
