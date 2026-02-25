@@ -190,7 +190,7 @@ module "eks" {
   node_instance_types       = ["t4g.large"]
   capacity_type             = "ON_DEMAND"
   node_min_size             = 2
-  node_max_size             = 6
+  node_max_size             = 10
   node_desired_size         = 3
 }
 

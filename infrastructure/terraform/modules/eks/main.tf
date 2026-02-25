@@ -35,11 +35,11 @@ module "eks" {
 
   create_kms_key = false
 
-  cluster_encryption_config = var.eks_kms_key_arn != "" ? {
+  cluster_encryption_config = var.eks_kms_key_arn != "" && var.eks_kms_key_arn != null ? {
     provider_key_arn = var.eks_kms_key_arn
     resources        = ["secrets"]
     } : {
-    provider_key_arn = ""
+    provider_key_arn = null
     resources        = []
   }
 

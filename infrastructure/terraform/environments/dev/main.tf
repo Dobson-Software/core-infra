@@ -114,9 +114,10 @@ variable "allowed_api_cidrs" {
 }
 
 variable "db_password" {
-  description = "RDS master password"
+  description = "RDS master password (unused — manage_master_user_password = true handles passwords)"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 ################################################################################

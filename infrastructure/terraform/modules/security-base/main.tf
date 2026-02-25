@@ -311,7 +311,7 @@ resource "aws_iam_policy" "secrets_access" {
       {
         Effect   = "Allow"
         Action   = "kms:Decrypt"
-        Resource = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : "*"
+        Resource = var.enable_cmk_keys ? aws_kms_key.secrets[0].arn : "arn:aws:kms:*:*:alias/aws/secretsmanager"
       }
     ]
   })
