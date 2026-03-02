@@ -31,7 +31,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 
     // Stripe
-    implementation("com.stripe:stripe-java:24.15.0")
+    implementation("com.stripe:stripe-java:31.4.0")
 
     // Twilio
     implementation("com.twilio.sdk:twilio:10.1.0")
