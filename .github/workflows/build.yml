@@ -112,7 +112,7 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/cobalt/core-service:${{ steps.tag.outputs.tag }}
 
       - name: Scan core-service image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: image
           image-ref: cobalt/core-service:${{ github.sha }}
@@ -132,7 +132,7 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/cobalt/notification-service:${{ steps.tag.outputs.tag }}
 
       - name: Scan notification-service image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: image
           image-ref: cobalt/notification-service:${{ github.sha }}
@@ -152,7 +152,7 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/cobalt/violations-service:${{ steps.tag.outputs.tag }}
 
       - name: Scan violations-service image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: image
           image-ref: cobalt/violations-service:${{ github.sha }}
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Run Trivy vulnerability scanner (backend)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           scan-type: fs
           scan-ref: ./backend
